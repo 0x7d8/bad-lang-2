@@ -1,7 +1,9 @@
 use crate::{
     runtime::Runtime,
     token::{
-        base::{ArrayToken, BooleanToken, NullToken, NumberToken, StringToken, ValueToken},
+        base::{
+            ArrayToken, BaseToken, BooleanToken, NullToken, NumberToken, StringToken, ValueToken,
+        },
         logic::ExpressionToken,
         LINE,
     },
@@ -15,6 +17,8 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
         "array#pop",
         "array#len",
         "array#clone",
+        "array#concat",
+        "array#contains",
         "array#get",
         "array#set",
     ]
@@ -117,6 +121,65 @@ pub fn run(
                 _ => {
                     panic!(
                         "array#clone requires an array as the first argument on line {}",
+                        unsafe { LINE }
+                    );
+                }
+            }
+        }
+        "array#concat" => {
+            if args.len() < 2 {
+                panic!(
+                    "array#concat requires at least 2 arguments on line {}",
+                    unsafe { LINE }
+                );
+            }
+
+            let mut result = Vec::new();
+
+            for arg in args {
+                let value = runtime.extract_value(arg)?;
+
+                match value {
+                    ValueToken::Array(array) => {
+                        result.extend(array.value.borrow().iter().cloned());
+                    }
+                    _ => {
+                        panic!(
+                            "array#concat requires an array as each argument on line {}",
+                            unsafe { LINE }
+                        );
+                    }
+                }
+            }
+
+            Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                value: Rc::new(RefCell::new(result)),
+            })))
+        }
+        "array#contains" => {
+            if args.len() != 2 {
+                panic!("array#contains requires 2 arguments on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            match value {
+                ValueToken::Array(array) => {
+                    let target = runtime.extract_value(&args[1])?;
+
+                    let contains = array.value.borrow().iter().any(|item| {
+                        let item = runtime.extract_value(item).unwrap();
+                        item.value() == target.value()
+                    });
+
+                    Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        value: contains,
+                    })))
+                }
+                _ => {
+                    panic!(
+                        "array#contains requires an array as the first argument on line {}",
                         unsafe { LINE }
                     );
                 }
