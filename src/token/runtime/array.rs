@@ -1,5 +1,6 @@
 use crate::{
     runtime::Runtime,
+    token::LINE,
     token::{
         base::{BooleanToken, NullToken, NumberToken, StringToken, ValueToken},
         logic::ExpressionToken,
@@ -20,31 +21,39 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
 
 pub fn run(
     name: &str,
-    args: &Vec<Rc<ExpressionToken>>,
+    args: &[Rc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {
         "array#push" => {
             if args.len() < 2 {
-                return None;
+                panic!(
+                    "array#push requires at least 2 arguments on line {}",
+                    unsafe { LINE }
+                );
             }
 
             let value = runtime.extract_value(&args[0])?;
             match value {
                 ValueToken::Array(array) => {
                     for arg in args.iter().skip(1) {
-                        let value = runtime.extract_value(&arg)?;
+                        let value = runtime.extract_value(arg)?;
                         array.value.borrow_mut().push(ExpressionToken::Value(value));
                     }
 
                     Some(ExpressionToken::Value(ValueToken::Array(array)))
                 }
-                _ => None,
+                _ => {
+                    panic!(
+                        "array#push requires an array as the first argument on line {}",
+                        unsafe { LINE }
+                    );
+                }
             }
         }
         "array#pop" => {
             if args.len() != 1 {
-                return None;
+                panic!("array#pop requires 1 argument on line {}", unsafe { LINE });
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -54,31 +63,43 @@ pub fn run(
                         .value
                         .borrow_mut()
                         .pop()
-                        .unwrap_or_else(|| ExpressionToken::Value(ValueToken::Null(NullToken)));
+                        .unwrap_or(ExpressionToken::Value(ValueToken::Null(NullToken)));
+
                     Some(value)
                 }
-                _ => None,
+                _ => {
+                    panic!(
+                        "array#pop requires an array as the first argument on line {}",
+                        unsafe { LINE }
+                    );
+                }
             }
         }
         "array#len" => {
             if args.len() != 1 {
-                return None;
+                panic!("array#len requires 1 argument on line {}", unsafe { LINE });
             }
 
             let value = runtime.extract_value(&args[0])?;
             match value {
                 ValueToken::Array(array) => {
                     let len = array.value.borrow().len();
+
                     Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                         value: len as f64,
                     })))
                 }
-                _ => None,
+                _ => {
+                    panic!(
+                        "array#len requires an array as the first argument on line {}",
+                        unsafe { LINE }
+                    );
+                }
             }
         }
         "array#get" => {
             if args.len() != 2 {
-                return None;
+                panic!("array#get requires 2 arguments on line {}", unsafe { LINE });
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -89,13 +110,18 @@ pub fn run(
                         ValueToken::Number(number) => {
                             let index = number.value as usize;
                             let value =
-                                array.value.borrow().get(index).cloned().unwrap_or_else(|| {
+                                array.value.borrow().get(index).cloned().unwrap_or({
                                     ExpressionToken::Value(ValueToken::Null(NullToken))
                                 });
 
                             Some(value)
                         }
-                        _ => None,
+                        _ => {
+                            panic!(
+                                "array#get requires a number as the second argument on line {}",
+                                unsafe { LINE }
+                            );
+                        }
                     }
                 }
                 ValueToken::String(string) => {
@@ -118,7 +144,12 @@ pub fn run(
 
                             Some(value)
                         }
-                        _ => None,
+                        _ => {
+                            panic!(
+                                "array#get requires a number as the second argument on line {}",
+                                unsafe { LINE }
+                            );
+                        }
                     }
                 }
                 ValueToken::Number(num) => {
@@ -134,15 +165,25 @@ pub fn run(
                                 value: value == 1,
                             })))
                         }
-                        _ => None,
+                        _ => {
+                            panic!(
+                                "array#get requires a number as the second argument on line {}",
+                                unsafe { LINE }
+                            );
+                        }
                     }
                 }
-                _ => None,
+                _ => {
+                    panic!(
+                        "array#get requires an array, string or number as the first argument on line {}",
+                        unsafe { LINE }
+                    );
+                }
             }
         }
         "array#set" => {
             if args.len() != 3 {
-                return None;
+                panic!("array#set requires 3 arguments on line {}", unsafe { LINE });
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -162,10 +203,20 @@ pub fn run(
 
                             Some(ExpressionToken::Value(ValueToken::Array(array)))
                         }
-                        _ => None,
+                        _ => {
+                            panic!(
+                                "array#set requires a number as the second argument on line {}",
+                                unsafe { LINE }
+                            );
+                        }
                     }
                 }
-                _ => None,
+                _ => {
+                    panic!(
+                        "array#set requires an array as the first argument on line {}",
+                        unsafe { LINE }
+                    );
+                }
             }
         }
         _ => None,

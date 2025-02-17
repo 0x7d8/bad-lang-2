@@ -19,7 +19,7 @@ pub fn extract_number(token: &ExpressionToken) -> Option<f64> {
             if let ExpressionToken::Value(ValueToken::Number(NumberToken { value })) =
                 &*value.borrow()
             {
-                Some(value.clone())
+                Some(*value)
             } else {
                 None
             }

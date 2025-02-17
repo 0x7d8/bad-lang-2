@@ -36,15 +36,21 @@ impl Runtime {
         for inside in &self.inside {
             match inside {
                 Token::Fn(fn_token) => {
-                    for token in fn_token.body.borrow().iter().cloned() {
+                    for token in fn_token.body.borrow().iter() {
                         tokens.push(token.clone());
-                        self.add_nested_tokens(&token, &mut tokens);
+                        self.add_nested_tokens(token, &mut tokens);
                     }
                 }
                 Token::Loop(loop_token) => {
-                    for token in loop_token.body.borrow().iter().cloned() {
+                    for token in loop_token.body.borrow().iter() {
                         tokens.push(token.clone());
-                        self.add_nested_tokens(&token, &mut tokens);
+                        self.add_nested_tokens(token, &mut tokens);
+                    }
+                }
+                Token::If(if_token) => {
+                    for token in if_token.body.borrow().iter() {
+                        tokens.push(token.clone());
+                        self.add_nested_tokens(token, &mut tokens);
                     }
                 }
                 _ => unreachable!(),
@@ -57,15 +63,15 @@ impl Runtime {
     fn add_nested_tokens(&self, token: &Token, tokens: &mut Vec<Token>) {
         match token {
             Token::Fn(fn_token) => {
-                for token in fn_token.body.borrow().iter().cloned() {
+                for token in fn_token.body.borrow().iter() {
                     tokens.push(token.clone());
-                    self.add_nested_tokens(&token, tokens);
+                    self.add_nested_tokens(token, tokens);
                 }
             }
             Token::Loop(loop_token) => {
-                for token in loop_token.body.borrow().iter().cloned() {
+                for token in loop_token.body.borrow().iter() {
                     tokens.push(token.clone());
-                    self.add_nested_tokens(&token, tokens);
+                    self.add_nested_tokens(token, tokens);
                 }
             }
             _ => {}
@@ -99,7 +105,7 @@ impl Runtime {
             Token::If(token) => {
                 self.inside.push(Token::If(token.clone()));
 
-                let condition = self.extract_value(&*token.condition).unwrap();
+                let condition = self.extract_value(&token.condition).unwrap();
 
                 if (token.reversed && !condition.truthy())
                     || (!token.reversed && condition.truthy())
@@ -126,7 +132,7 @@ impl Runtime {
             }
             Token::FnCall(call_token) => {
                 if runtime::FUNCTIONS.contains(&call_token.name.as_str()) {
-                    return runtime::run(&call_token.name.as_str(), &call_token.args, self);
+                    return runtime::run(call_token.name.as_str(), &call_token.args, self);
                 }
 
                 for token in self.current_tokens_context().iter().rev() {
@@ -140,15 +146,14 @@ impl Runtime {
                         let mut index = 0;
                         while index < fn_token.args.len() {
                             let value = self
-                                .extract_value(&*call_token.args.get(index).unwrap_or(&Rc::new(
+                                .extract_value(call_token.args.get(index).unwrap_or(&Rc::new(
                                     ExpressionToken::Value(ValueToken::Null(NullToken)),
                                 )))
                                 .unwrap();
-                            match fn_token.body.borrow().get(index).unwrap() {
-                                Token::Let(let_token) => {
-                                    *let_token.value.borrow_mut() = ExpressionToken::Value(value);
-                                }
-                                _ => {}
+                            if let Token::Let(let_token) =
+                                fn_token.body.borrow().get(index).unwrap()
+                            {
+                                *let_token.value.borrow_mut() = ExpressionToken::Value(value);
                             };
 
                             index += 1;
@@ -172,13 +177,13 @@ impl Runtime {
                 }
             }
             Token::LetAssign(assign_token) => {
-                for token in self.current_tokens_context().iter() {
+                for token in self.current_tokens_context().iter().rev() {
                     if let Token::Let(let_token) = token {
                         if assign_token.name != let_token.name {
                             continue;
                         }
 
-                        let value = self.extract_value(&*assign_token.value).unwrap();
+                        let value = self.extract_value(&assign_token.value).unwrap();
                         *let_token.value.borrow_mut() = ExpressionToken::Value(value);
 
                         break;
@@ -198,7 +203,7 @@ impl Runtime {
                 if let ExpressionToken::Value(value) = &*value.borrow() {
                     Some(value.clone())
                 } else {
-                    self.extract_value(&*value.borrow())
+                    self.extract_value(&value.borrow())
                 }
             }
             ExpressionToken::FnCall(value) => {

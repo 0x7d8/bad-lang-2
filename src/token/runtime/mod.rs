@@ -25,7 +25,7 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
 
 pub fn run(
     name: &str,
-    args: &Vec<Rc<ExpressionToken>>,
+    args: &[Rc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     if io::FUNCTIONS.contains(&name) {

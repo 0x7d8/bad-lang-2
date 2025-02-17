@@ -1,6 +1,6 @@
 use super::{base::ValueToken, Token};
 
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub struct LetToken {
@@ -52,5 +52,5 @@ pub struct BreakToken;
 
 #[derive(Debug, Clone)]
 pub struct ReturnToken {
-    pub value: Arc<ExpressionToken>,
+    pub value: Rc<ExpressionToken>,
 }

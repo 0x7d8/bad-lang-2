@@ -1,5 +1,6 @@
 use crate::{
     runtime::Runtime,
+    token::LINE,
     token::{
         base::{BaseToken, NumberToken, StringToken, ValueToken},
         logic::ExpressionToken,
@@ -13,19 +14,21 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> =
 
 pub fn run(
     name: &str,
-    args: &Vec<Rc<ExpressionToken>>,
+    args: &[Rc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {
         "string#concat" => {
             if args.len() < 2 {
-                return None;
+                panic!("string#concat requires 2 arguments on line {}", unsafe {
+                    LINE
+                });
             }
 
             let mut result = String::new();
 
             for arg in args {
-                let value = runtime.extract_value(&arg)?;
+                let value = runtime.extract_value(arg)?;
 
                 result.push_str(&value.value());
             }
@@ -36,14 +39,17 @@ pub fn run(
         }
         "string#format" => {
             if args.len() < 2 {
-                return None;
+                panic!(
+                    "string#format requires at least 2 arguments on line {}",
+                    unsafe { LINE }
+                );
             }
 
             let format = runtime.extract_value(&args[0])?.value().to_string();
             let mut values = Vec::new();
 
             for arg in args.iter().skip(1) {
-                let value = runtime.extract_value(&arg)?;
+                let value = runtime.extract_value(arg)?;
 
                 values.push(value.value());
             }
@@ -59,7 +65,7 @@ pub fn run(
         }
         "string#len" => {
             if args.len() != 1 {
-                return None;
+                panic!("string#len requires 1 argument on line {}", unsafe { LINE });
             }
 
             let value = runtime.extract_value(&args[0])?;

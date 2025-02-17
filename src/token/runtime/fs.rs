@@ -1,24 +1,26 @@
 use crate::{
     runtime::Runtime,
+    token::LINE,
     token::{
         base::{BaseToken, StringToken, ValueToken},
         logic::ExpressionToken,
     },
 };
 
-use std::{rc::Rc, sync::LazyLock};
+use std::{io::Read, rc::Rc, sync::LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["fs#readstr"]);
+pub static FUNCTIONS: LazyLock<Vec<&str>> =
+    LazyLock::new(|| vec!["fs#readstr", "fs#readstr_until"]);
 
 pub fn run(
     name: &str,
-    args: &Vec<Rc<ExpressionToken>>,
+    args: &[Rc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {
         "fs#readstr" => {
             if args.len() != 1 {
-                return None;
+                panic!("fs#readstr requires 1 argument on line {}", unsafe { LINE });
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -28,6 +30,52 @@ pub fn run(
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
                 value: content,
             })))
+        }
+        "fs#readstr_until" => {
+            if args.len() != 2 {
+                panic!("fs#readstr_until requires 2 arguments on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let bytes = runtime.extract_value(&args[1])?;
+
+            match (value, bytes) {
+                (ValueToken::String(value), ValueToken::Number(bytes)) => {
+                    let path = value.value;
+                    let bytes = bytes.value;
+
+                    let mut file = std::fs::File::open(path).unwrap();
+                    let mut content = String::new();
+
+                    loop {
+                        let mut buffer = vec![0; 1024];
+                        let read = file.read(&mut buffer).unwrap();
+
+                        if read == 0 {
+                            break;
+                        }
+
+                        if read > bytes as usize {
+                            content.push_str(&String::from_utf8_lossy(&buffer[..bytes as usize]));
+                            break;
+                        }
+
+                        content.push_str(&String::from_utf8_lossy(&buffer[..read]));
+                    }
+
+                    Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                        value: content,
+                    })))
+                }
+                _ => {
+                    panic!(
+                        "fs#readstr_until requires a string and a number on line {}",
+                        unsafe { LINE }
+                    );
+                }
+            }
         }
         _ => None,
     }

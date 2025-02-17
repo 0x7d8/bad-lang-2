@@ -26,7 +26,7 @@ pub fn sqrt(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
 
     let value = extract_number(&args[0])?;
     if value < 0.0 {
-        return None;
+        None
     } else {
         Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
             value: value.sqrt(),

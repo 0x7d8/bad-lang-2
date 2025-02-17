@@ -8,7 +8,7 @@ use logic::{
     BreakToken, ExpressionToken, FnCallToken, FnToken, IfToken, LetAssignToken, LetToken,
     LoopToken, ReturnToken,
 };
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -21,6 +21,8 @@ pub enum Token {
     Return(ReturnToken),
     If(IfToken),
 }
+
+pub static mut LINE: usize = 0;
 
 pub struct Tokenizer {
     input: String,
@@ -61,15 +63,19 @@ impl Tokenizer {
         self.tokens.clear();
 
         for line in self.input.clone().lines() {
+            unsafe {
+                LINE += 1;
+            }
+
             let token = self.tokenize(line);
-            if token.is_some() {
-                self.push_token(token.unwrap());
+            if let Some(token) = token {
+                self.push_token(token);
             }
         }
     }
 
     fn push_token(&mut self, token: Token) {
-        if self.inside.len() > 0 {
+        if !self.inside.is_empty() {
             match &*self.inside.last().unwrap().borrow() {
                 Token::Fn(ref fn_token) => {
                     fn_token.body.borrow_mut().push(token);
@@ -98,21 +104,21 @@ impl Tokenizer {
         for inside in &self.inside {
             match &*inside.borrow() {
                 Token::Fn(ref fn_token) => {
-                    for token in fn_token.body.borrow().iter().cloned() {
+                    for token in fn_token.body.borrow().iter() {
                         tokens.push(token.clone());
-                        self.add_nested_tokens(&token, &mut tokens);
+                        self.add_nested_tokens(token, &mut tokens);
                     }
                 }
                 Token::Loop(ref loop_token) => {
-                    for token in loop_token.body.borrow().iter().cloned() {
+                    for token in loop_token.body.borrow().iter() {
                         tokens.push(token.clone());
-                        self.add_nested_tokens(&token, &mut tokens);
+                        self.add_nested_tokens(token, &mut tokens);
                     }
                 }
                 Token::If(ref if_token) => {
-                    for token in if_token.body.borrow().iter().cloned() {
+                    for token in if_token.body.borrow().iter() {
                         tokens.push(token.clone());
-                        self.add_nested_tokens(&token, &mut tokens);
+                        self.add_nested_tokens(token, &mut tokens);
                     }
                 }
                 _ => unreachable!(),
@@ -125,21 +131,21 @@ impl Tokenizer {
     fn add_nested_tokens(&self, token: &Token, tokens: &mut Vec<Token>) {
         match token {
             Token::Fn(fn_token) => {
-                for token in fn_token.body.borrow().iter().cloned() {
+                for token in fn_token.body.borrow().iter() {
                     tokens.push(token.clone());
-                    self.add_nested_tokens(&token, tokens);
+                    self.add_nested_tokens(token, tokens);
                 }
             }
             Token::Loop(loop_token) => {
-                for token in loop_token.body.borrow().iter().cloned() {
+                for token in loop_token.body.borrow().iter() {
                     tokens.push(token.clone());
-                    self.add_nested_tokens(&token, tokens);
+                    self.add_nested_tokens(token, tokens);
                 }
             }
             Token::If(if_token) => {
-                for token in if_token.body.borrow().iter().cloned() {
+                for token in if_token.body.borrow().iter() {
                     tokens.push(token.clone());
-                    self.add_nested_tokens(&token, tokens);
+                    self.add_nested_tokens(token, tokens);
                 }
             }
             _ => {}
@@ -150,9 +156,11 @@ impl Tokenizer {
         segment = segment.trim();
 
         if segment == "}" {
-            if self.inside.len() > 0 {
+            if !self.inside.is_empty() {
                 self.inside.pop().unwrap();
                 return None;
+            } else {
+                panic!("unexpected '}}' at line {}", unsafe { LINE });
             }
         }
 
@@ -173,7 +181,9 @@ impl Tokenizer {
             }
 
             if value.is_none() {
-                return None;
+                panic!("unexpected value at line {} (did you typo?)", unsafe {
+                    LINE
+                });
             }
 
             return Some(Token::Let(LetToken {
@@ -236,32 +246,26 @@ impl Tokenizer {
 
             return None;
         } else if segment.starts_with("return")
-            && self.inside.len() > 0
-            && match *self.inside.last().unwrap().borrow() {
-                Token::Fn(_) => true,
-                _ => false,
-            }
+            && !self.inside.is_empty()
+            && matches!(&*self.inside.last().unwrap().borrow(), Token::Fn(_))
         {
             if segment.len() < 7 {
                 return Some(Token::Return(ReturnToken {
-                    value: Arc::new(ExpressionToken::Value(ValueToken::Null(NullToken))),
+                    value: Rc::new(ExpressionToken::Value(ValueToken::Null(NullToken))),
                 }));
             }
 
             let value = self.parse_expression(segment[6..].trim());
             if value.is_none() {
-                return None;
+                panic!("unexpected value at line {} (did you typo?)", unsafe {
+                    LINE
+                });
             }
 
             return Some(Token::Return(ReturnToken {
-                value: Arc::new(value.unwrap()),
+                value: Rc::new(value.unwrap()),
             }));
         } else if segment.starts_with("if") {
-            let condition = self.parse_expression(segment[4..segment.len() - 3].trim());
-            if condition.is_none() {
-                return None;
-            }
-
             let reversed;
             let condition;
             if segment.starts_with("if not") {
@@ -272,7 +276,11 @@ impl Tokenizer {
                 condition = self.parse_expression(segment[4..segment.len() - 3].trim());
             }
 
-            let condition = Rc::new(condition.unwrap());
+            let condition = Rc::new(condition.unwrap_or_else(|| {
+                panic!("unexpected condition at line {} (did you typo?)", unsafe {
+                    LINE
+                })
+            }));
 
             let body = Rc::new(RefCell::new(Vec::new()));
             let token = Token::If(IfToken {
@@ -289,7 +297,7 @@ impl Tokenizer {
             }))));
 
             return None;
-        } else if segment == "break" && self.inside.len() > 0 {
+        } else if segment == "break" && !self.inside.is_empty() {
             return Some(Token::Break(BreakToken));
         }
 
@@ -319,7 +327,9 @@ impl Tokenizer {
                 if !let_token.is_const && segment.starts_with(&format!("{} = ", let_token.name)) {
                     let value = self.parse_expression(segment[let_token.name.len() + 3..].trim());
                     if value.is_none() {
-                        return None;
+                        panic!("unexpected value at line {} (did you typo?)", unsafe {
+                            LINE
+                        });
                     }
 
                     return Some(Token::LetAssign(LetAssignToken {
@@ -347,17 +357,17 @@ impl Tokenizer {
         }
 
         let number = segment.parse::<f64>();
-        if number.is_ok() {
+        if let Ok(number) = number {
             return Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
-                value: number.unwrap(),
+                value: number,
             })));
         }
 
-        if segment.starts_with("0x") {
-            let number = u64::from_str_radix(&segment[2..], 16);
-            if number.is_ok() {
+        if let Some(stripped) = segment.strip_prefix("0x") {
+            let number = u64::from_str_radix(stripped, 16);
+            if let Ok(number) = number {
                 return Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
-                    value: number.unwrap() as f64,
+                    value: number as f64,
                 })));
             }
         }

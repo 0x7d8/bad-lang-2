@@ -1,5 +1,6 @@
 use crate::{
     runtime::Runtime,
+    token::LINE,
     token::{
         base::{BaseToken, NumberToken, ValueToken},
         logic::ExpressionToken,
@@ -12,13 +13,13 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["math#eval"]);
 
 pub fn run(
     name: &str,
-    args: &Vec<Rc<ExpressionToken>>,
+    args: &[Rc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {
         "math#eval" => {
             if args.len() != 1 {
-                return None;
+                panic!("math#eval requires 1 argument on line {}", unsafe { LINE });
             }
 
             let value = runtime.extract_value(&args[0])?;
