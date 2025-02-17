@@ -1,19 +1,20 @@
 use crate::{
     runtime::Runtime,
-    token::LINE,
     token::{
-        base::{BooleanToken, NullToken, NumberToken, StringToken, ValueToken},
+        base::{ArrayToken, BooleanToken, NullToken, NumberToken, StringToken, ValueToken},
         logic::ExpressionToken,
+        LINE,
     },
 };
 
-use std::{rc::Rc, sync::LazyLock};
+use std::{cell::RefCell, rc::Rc, sync::LazyLock};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec![
         "array#push",
         "array#pop",
         "array#len",
+        "array#clone",
         "array#get",
         "array#set",
     ]
@@ -92,6 +93,30 @@ pub fn run(
                 _ => {
                     panic!(
                         "array#len requires an array as the first argument on line {}",
+                        unsafe { LINE }
+                    );
+                }
+            }
+        }
+        "array#clone" => {
+            if args.len() != 1 {
+                panic!("array#clone requires 1 argument on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            match value {
+                ValueToken::Array(array) => {
+                    let value = array.value.borrow().clone();
+
+                    Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                        value: Rc::new(RefCell::new(value)),
+                    })))
+                }
+                _ => {
+                    panic!(
+                        "array#clone requires an array as the first argument on line {}",
                         unsafe { LINE }
                     );
                 }

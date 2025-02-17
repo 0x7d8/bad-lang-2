@@ -75,24 +75,30 @@ impl BaseToken for ArrayToken {
         let mut result = format!("Array({}) {{\n", self.value.borrow().len());
 
         for token in self.value.borrow().iter() {
-            if let ExpressionToken::Value(value_token) = token {
-                result.push_str(&format!("{}\n", value_token.inspect()));
+            match token {
+                ExpressionToken::Value(value_token) => {
+                    result.push_str(&format!("{}\n", value_token.inspect()));
+                }
+                _ => {}
             }
         }
 
-        result + "}"
+        return result + "}";
     }
 
     fn value(&self) -> String {
-        let mut result = "[\n".to_string();
+        let mut result = format!("[\n");
 
         for token in self.value.borrow().iter() {
-            if let ExpressionToken::Value(value_token) = token {
-                result.push_str(&format!("{}\n", value_token.value()));
+            match token {
+                ExpressionToken::Value(value_token) => {
+                    result.push_str(&format!("{}\n", value_token.value()));
+                }
+                _ => {}
             }
         }
 
-        result + "]"
+        return result + "]";
     }
 
     fn truthy(&self) -> bool {
