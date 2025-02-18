@@ -2,7 +2,9 @@ mod runtime;
 mod token;
 
 fn main() {
-    let input = std::fs::read_to_string("input.bl2").unwrap();
+    let file = std::env::args().nth(1).expect("no file provided");
+
+    let input = std::fs::read_to_string(file).unwrap();
     let mut tokenizer = token::Tokenizer::new(&input);
 
     tokenizer.parse();

@@ -430,12 +430,18 @@ impl Tokenizer {
         let mut tokens = Vec::new();
         let mut expr = String::new();
         let mut depth = 0;
+
         let mut in_string = false;
+        let mut in_array = false;
 
         for c in segment.chars() {
             if c == '"' {
                 in_string = !in_string;
-            } else if !in_string {
+            } else if c == '[' {
+                in_array = true;
+            } else if c == ']' {
+                in_array = false;
+            } else if !in_string && !in_array {
                 if c == '(' {
                     depth += 1;
                 } else if c == ')' {
@@ -443,7 +449,7 @@ impl Tokenizer {
                 }
             }
 
-            if c == ',' && depth == 0 && !in_string {
+            if c == ',' && depth == 0 && !in_string && !in_array {
                 if let Some(token) = self.parse_expression(expr.trim()) {
                     tokens.push(token);
                 }

@@ -74,6 +74,12 @@ impl Runtime {
                     self.add_nested_tokens(token, tokens);
                 }
             }
+            Token::If(if_token) => {
+                for token in if_token.body.borrow().iter() {
+                    tokens.push(token.clone());
+                    self.add_nested_tokens(token, tokens);
+                }
+            }
             _ => {}
         }
     }

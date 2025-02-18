@@ -9,7 +9,8 @@ use crate::{
 
 use std::{rc::Rc, sync::LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["#eq", "#lt", "#gt"]);
+pub static FUNCTIONS: LazyLock<Vec<&str>> =
+    LazyLock::new(|| vec!["#eq", "#lt", "#gt", "#and", "#or"]);
 
 pub fn run(
     name: &str,
@@ -66,6 +67,44 @@ pub fn run(
                     panic!("#gt requires 2 numbers on line {}", unsafe { LINE });
                 }
             }
+        }
+        "#and" => {
+            if args.len() < 2 {
+                panic!("#and requires 2 arguments on line {}", unsafe { LINE });
+            }
+
+            for arg in args {
+                let value = runtime.extract_value(arg)?;
+
+                if !value.truthy() {
+                    return Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        value: false,
+                    })));
+                }
+            }
+
+            Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                value: true,
+            })))
+        }
+        "#or" => {
+            if args.len() < 2 {
+                panic!("#or requires 2 arguments on line {}", unsafe { LINE });
+            }
+
+            for arg in args {
+                let value = runtime.extract_value(arg)?;
+
+                if value.truthy() {
+                    return Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        value: true,
+                    })));
+                }
+            }
+
+            Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                value: false,
+            })))
         }
         _ => None,
     }
