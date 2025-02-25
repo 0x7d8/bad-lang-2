@@ -34,11 +34,12 @@ pub fn run(
             }
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                location: Default::default(),
                 value: result,
             })))
         }
         "string#format" => {
-            if args.len() < 1 {
+            if args.is_empty() {
                 panic!(
                     "string#format requires at least 1 argument on line {}",
                     unsafe { LINE }
@@ -60,6 +61,7 @@ pub fn run(
             }
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                location: Default::default(),
                 value: result,
             })))
         }
@@ -72,6 +74,7 @@ pub fn run(
             let len = value.value().len();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
                 value: len as f64,
             })))
         }

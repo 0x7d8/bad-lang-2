@@ -25,7 +25,9 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             println!("{}", value.value());
 
-            Some(ExpressionToken::Value(ValueToken::Null(NullToken)))
+            Some(ExpressionToken::Value(ValueToken::Null(NullToken {
+                location: Default::default(),
+            })))
         }
         "io#inspect" => {
             if args.len() != 1 {
@@ -35,7 +37,9 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             println!("{}", value.inspect());
 
-            Some(ExpressionToken::Value(ValueToken::Null(NullToken)))
+            Some(ExpressionToken::Value(ValueToken::Null(NullToken {
+                location: Default::default(),
+            })))
         }
         _ => None,
     }

@@ -28,8 +28,10 @@ pub fn run(
                 _ => panic!("time#sleep requires a number on line {}", unsafe { LINE }),
             };
 
-            std::thread::sleep(std::time::Duration::from_millis((seconds * 1000.0) as u64));	
-            Some(ExpressionToken::Value(ValueToken::Null(NullToken)))
+            std::thread::sleep(std::time::Duration::from_millis((seconds * 1000.0) as u64));
+            Some(ExpressionToken::Value(ValueToken::Null(NullToken {
+                location: Default::default(),
+            })))
         }
         "time#now" => {
             if !args.is_empty() {
@@ -42,6 +44,7 @@ pub fn run(
                 .as_secs();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
                 value: unix_time as f64,
             })))
         }

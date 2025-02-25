@@ -28,6 +28,7 @@ pub fn run(
             let content = std::fs::read_to_string(path).unwrap();
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                location: Default::default(),
                 value: content,
             })))
         }
@@ -66,6 +67,7 @@ pub fn run(
                     }
 
                     Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                        location: Default::default(),
                         value: content,
                     })))
                 }

@@ -1,4 +1,4 @@
-use super::{base::ValueToken, Token};
+use super::{Token, base::ValueToken};
 
 use std::{cell::RefCell, rc::Rc};
 

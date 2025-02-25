@@ -15,6 +15,7 @@ pub fn add(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
     }
 
     Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+        location: Default::default(),
         value: sum,
     })))
 }
@@ -29,6 +30,7 @@ pub fn sqrt(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
         None
     } else {
         Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+            location: Default::default(),
             value: value.sqrt(),
         })))
     }

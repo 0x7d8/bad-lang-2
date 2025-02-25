@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use super::logic::ExpressionToken;
+use super::{TokenLocation, logic::ExpressionToken};
 
 pub trait BaseToken {
     fn inspect(&self) -> String;
@@ -10,6 +10,7 @@ pub trait BaseToken {
 
 #[derive(Debug, Clone)]
 pub struct StringToken {
+    pub location: TokenLocation,
     pub value: String,
 }
 
@@ -29,6 +30,7 @@ impl BaseToken for StringToken {
 
 #[derive(Debug, Clone)]
 pub struct NumberToken {
+    pub location: TokenLocation,
     pub value: f64,
 }
 
@@ -48,6 +50,7 @@ impl BaseToken for NumberToken {
 
 #[derive(Debug, Clone)]
 pub struct BooleanToken {
+    pub location: TokenLocation,
     pub value: bool,
 }
 
@@ -67,6 +70,7 @@ impl BaseToken for BooleanToken {
 
 #[derive(Debug, Clone)]
 pub struct ArrayToken {
+    pub location: TokenLocation,
     pub value: Rc<RefCell<Vec<ExpressionToken>>>,
 }
 
@@ -101,7 +105,9 @@ impl BaseToken for ArrayToken {
 }
 
 #[derive(Debug, Clone)]
-pub struct NullToken;
+pub struct NullToken {
+    pub location: TokenLocation,
+}
 
 impl BaseToken for NullToken {
     fn inspect(&self) -> String {

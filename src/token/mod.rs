@@ -10,6 +10,17 @@ use logic::{
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+#[derive(Debug, Clone, Copy)]
+pub struct TokenLocation {
+    pub line: usize,
+}
+
+impl Default for TokenLocation {
+    fn default() -> Self {
+        Self { line: usize::MAX }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Token {
     Let(LetToken),
@@ -214,7 +225,9 @@ impl Tokenizer {
                     name: arg.clone(),
                     is_const: false,
                     value: Rc::new(RefCell::new(ExpressionToken::Value(ValueToken::Null(
-                        NullToken,
+                        NullToken {
+                            location: self.location(),
+                        },
                     )))),
                 }));
             }
@@ -251,7 +264,9 @@ impl Tokenizer {
         {
             if segment.len() < 7 {
                 return Some(Token::Return(ReturnToken {
-                    value: Rc::new(ExpressionToken::Value(ValueToken::Null(NullToken))),
+                    value: Rc::new(ExpressionToken::Value(ValueToken::Null(NullToken {
+                        location: self.location(),
+                    }))),
                 }));
             }
 
@@ -346,12 +361,14 @@ impl Tokenizer {
     pub fn parse_expression(&self, segment: &str) -> Option<ExpressionToken> {
         if segment.starts_with("\"") && segment.ends_with("\"") {
             return Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                location: self.location(),
                 value: segment[1..segment.len() - 1].to_string(),
             })));
         } else if segment.starts_with("[") && segment.ends_with("]") {
             let tokens = self.parse_args(&segment[1..segment.len() - 1]);
 
             return Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                location: self.location(),
                 value: Rc::new(RefCell::new(tokens)),
             })));
         }
@@ -359,6 +376,7 @@ impl Tokenizer {
         let number = segment.parse::<f64>();
         if let Ok(number) = number {
             return Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: self.location(),
                 value: number,
             })));
         }
@@ -367,6 +385,7 @@ impl Tokenizer {
             let number = u64::from_str_radix(stripped, 16);
             if let Ok(number) = number {
                 return Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                    location: self.location(),
                     value: number as f64,
                 })));
             }
@@ -374,12 +393,15 @@ impl Tokenizer {
 
         if segment == "true" || segment == "false" {
             return Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: self.location(),
                 value: segment == "true",
             })));
         }
 
         if segment == "null" {
-            return Some(ExpressionToken::Value(ValueToken::Null(NullToken)));
+            return Some(ExpressionToken::Value(ValueToken::Null(NullToken {
+                location: self.location(),
+            })));
         }
 
         for func in runtime::FUNCTIONS.iter() {
@@ -466,5 +488,11 @@ impl Tokenizer {
         }
 
         tokens
+    }
+
+    fn location(&self) -> TokenLocation {
+        TokenLocation {
+            line: unsafe { LINE },
+        }
     }
 }

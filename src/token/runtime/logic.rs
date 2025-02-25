@@ -27,6 +27,7 @@ pub fn run(
             let right = runtime.extract_value(&args[1])?;
 
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: Default::default(),
                 value: left.value() == right.value(),
             })))
         }
@@ -41,6 +42,7 @@ pub fn run(
             match (left, right) {
                 (ValueToken::Number(left), ValueToken::Number(right)) => {
                     Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
                         value: left.value < right.value,
                     })))
                 }
@@ -60,6 +62,7 @@ pub fn run(
             match (left, right) {
                 (ValueToken::Number(left), ValueToken::Number(right)) => {
                     Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
                         value: left.value > right.value,
                     })))
                 }
@@ -78,12 +81,14 @@ pub fn run(
 
                 if !value.truthy() {
                     return Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
                         value: false,
                     })));
                 }
             }
 
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: Default::default(),
                 value: true,
             })))
         }
@@ -97,12 +102,14 @@ pub fn run(
 
                 if value.truthy() {
                     return Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
                         value: true,
                     })));
                 }
             }
 
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: Default::default(),
                 value: false,
             })))
         }

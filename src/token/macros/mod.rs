@@ -1,6 +1,6 @@
 use super::{
-    base::{ArrayToken, BooleanToken, NullToken, StringToken},
     ExpressionToken, LetToken,
+    base::{ArrayToken, BooleanToken, NullToken, StringToken},
 };
 use crate::token::base::{NumberToken, ValueToken};
 
@@ -8,7 +8,7 @@ pub mod number;
 
 pub fn extract_number(token: &ExpressionToken) -> Option<f64> {
     match token {
-        ExpressionToken::Value(ValueToken::Number(NumberToken { value })) => Some(*value),
+        ExpressionToken::Value(ValueToken::Number(NumberToken { value, .. })) => Some(*value),
         ExpressionToken::Let(LetToken {
             value, is_const, ..
         }) => {
@@ -16,7 +16,7 @@ pub fn extract_number(token: &ExpressionToken) -> Option<f64> {
                 return None;
             }
 
-            if let ExpressionToken::Value(ValueToken::Number(NumberToken { value })) =
+            if let ExpressionToken::Value(ValueToken::Number(NumberToken { value, .. })) =
                 &*value.borrow()
             {
                 Some(*value)
@@ -30,7 +30,9 @@ pub fn extract_number(token: &ExpressionToken) -> Option<f64> {
 
 pub fn extract_string(token: &ExpressionToken) -> Option<String> {
     match token {
-        ExpressionToken::Value(ValueToken::String(StringToken { value })) => Some(value.clone()),
+        ExpressionToken::Value(ValueToken::String(StringToken { value, .. })) => {
+            Some(value.clone())
+        }
         ExpressionToken::Let(LetToken {
             value, is_const, ..
         }) => {
@@ -38,7 +40,7 @@ pub fn extract_string(token: &ExpressionToken) -> Option<String> {
                 return None;
             }
 
-            if let ExpressionToken::Value(ValueToken::String(StringToken { value })) =
+            if let ExpressionToken::Value(ValueToken::String(StringToken { value, .. })) =
                 &*value.borrow()
             {
                 Some(value.clone())
@@ -61,6 +63,7 @@ pub fn concat(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
     }
 
     Some(ExpressionToken::Value(ValueToken::String(StringToken {
+        location: Default::default(),
         value: result,
     })))
 }
@@ -71,28 +74,34 @@ pub fn inline(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
     }
 
     match &args[0] {
-        ExpressionToken::Value(ValueToken::String(StringToken { value })) => {
+        ExpressionToken::Value(ValueToken::String(StringToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                location: *location,
                 value: value.clone(),
             })))
         }
-        ExpressionToken::Value(ValueToken::Number(NumberToken { value })) => {
+        ExpressionToken::Value(ValueToken::Number(NumberToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: *location,
                 value: *value,
             })))
         }
-        ExpressionToken::Value(ValueToken::Boolean(BooleanToken { value })) => {
+        ExpressionToken::Value(ValueToken::Boolean(BooleanToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: *location,
                 value: *value,
             })))
         }
-        ExpressionToken::Value(ValueToken::Array(ArrayToken { value })) => {
+        ExpressionToken::Value(ValueToken::Array(ArrayToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                location: *location,
                 value: value.clone(),
             })))
         }
-        ExpressionToken::Value(ValueToken::Null(_)) => {
-            Some(ExpressionToken::Value(ValueToken::Null(NullToken)))
+        ExpressionToken::Value(ValueToken::Null(NullToken { location })) => {
+            Some(ExpressionToken::Value(ValueToken::Null(NullToken {
+                location: *location,
+            })))
         }
         ExpressionToken::Let(LetToken {
             value, is_const, ..
@@ -102,28 +111,34 @@ pub fn inline(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
             }
 
             match &*value.as_ref().borrow() {
-                ExpressionToken::Value(ValueToken::String(StringToken { value })) => {
+                ExpressionToken::Value(ValueToken::String(StringToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                        location: *location,
                         value: value.clone(),
                     })))
                 }
-                ExpressionToken::Value(ValueToken::Number(NumberToken { value })) => {
+                ExpressionToken::Value(ValueToken::Number(NumberToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                        location: *location,
                         value: *value,
                     })))
                 }
-                ExpressionToken::Value(ValueToken::Boolean(BooleanToken { value })) => {
+                ExpressionToken::Value(ValueToken::Boolean(BooleanToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        location: *location,
                         value: *value,
                     })))
                 }
-                ExpressionToken::Value(ValueToken::Array(ArrayToken { value })) => {
+                ExpressionToken::Value(ValueToken::Array(ArrayToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                        location: *location,
                         value: value.clone(),
                     })))
                 }
-                ExpressionToken::Value(ValueToken::Null(_)) => {
-                    Some(ExpressionToken::Value(ValueToken::Null(NullToken)))
+                ExpressionToken::Value(ValueToken::Null(NullToken { location })) => {
+                    Some(ExpressionToken::Value(ValueToken::Null(NullToken {
+                        location: *location,
+                    })))
                 }
                 _ => None,
             }

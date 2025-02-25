@@ -1,11 +1,11 @@
 use crate::{
     runtime::Runtime,
     token::{
+        LINE,
         base::{
             ArrayToken, BaseToken, BooleanToken, NullToken, NumberToken, StringToken, ValueToken,
         },
         logic::ExpressionToken,
-        LINE,
     },
 };
 
@@ -46,7 +46,7 @@ pub fn run(
                         array.value.borrow_mut().push(ExpressionToken::Value(value));
                     }
 
-                    Some(ExpressionToken::Value(ValueToken::Array(array)))
+                    Some(ExpressionToken::Value(ValueToken::Array(array.clone())))
                 }
                 _ => {
                     panic!(
@@ -68,7 +68,9 @@ pub fn run(
                         .value
                         .borrow_mut()
                         .pop()
-                        .unwrap_or(ExpressionToken::Value(ValueToken::Null(NullToken)));
+                        .unwrap_or(ExpressionToken::Value(ValueToken::Null(NullToken {
+                            location: Default::default(),
+                        })));
 
                     Some(value)
                 }
@@ -91,6 +93,7 @@ pub fn run(
                     let len = array.value.borrow().len();
 
                     Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                        location: Default::default(),
                         value: len as f64,
                     })))
                 }
@@ -115,6 +118,7 @@ pub fn run(
                     let value = array.value.borrow().clone();
 
                     Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                        location: Default::default(),
                         value: Rc::new(RefCell::new(value)),
                     })))
                 }
@@ -153,6 +157,7 @@ pub fn run(
             }
 
             Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                location: Default::default(),
                 value: Rc::new(RefCell::new(result)),
             })))
         }
@@ -174,6 +179,7 @@ pub fn run(
                     });
 
                     Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
                         value: contains,
                     })))
                 }
@@ -197,10 +203,11 @@ pub fn run(
                     match index {
                         ValueToken::Number(number) => {
                             let index = number.value as usize;
-                            let value =
-                                array.value.borrow().get(index).cloned().unwrap_or({
-                                    ExpressionToken::Value(ValueToken::Null(NullToken))
-                                });
+                            let value = array.value.borrow().get(index).cloned().unwrap_or({
+                                ExpressionToken::Value(ValueToken::Null(NullToken {
+                                    location: Default::default(),
+                                }))
+                            });
 
                             Some(value)
                         }
@@ -223,11 +230,14 @@ pub fn run(
                                 .nth(index)
                                 .map(|c| {
                                     ExpressionToken::Value(ValueToken::String(StringToken {
+                                        location: Default::default(),
                                         value: c.to_string(),
                                     }))
                                 })
                                 .unwrap_or_else(|| {
-                                    ExpressionToken::Value(ValueToken::Null(NullToken))
+                                    ExpressionToken::Value(ValueToken::Null(NullToken {
+                                        location: Default::default(),
+                                    }))
                                 });
 
                             Some(value)
@@ -250,6 +260,7 @@ pub fn run(
                             let value = (integer >> index) & 1;
 
                             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
                                 value: value == 1,
                             })))
                         }
@@ -283,13 +294,20 @@ pub fn run(
                     match index {
                         ValueToken::Number(number) => {
                             let index = number.value as usize;
-                            array.value.borrow_mut().resize(
-                                index + 1,
-                                ExpressionToken::Value(ValueToken::Null(NullToken)),
-                            );
-                            array.value.borrow_mut()[index] = ExpressionToken::Value(value);
+                            let mut arr = array.value.borrow_mut();
 
-                            Some(ExpressionToken::Value(ValueToken::Array(array)))
+                            if index >= arr.len() {
+                                arr.resize(
+                                    index + 1,
+                                    ExpressionToken::Value(ValueToken::Null(NullToken {
+                                        location: Default::default(),
+                                    })),
+                                );
+                            }
+
+                            arr[index] = ExpressionToken::Value(value);
+
+                            Some(ExpressionToken::Value(ValueToken::Array(array.clone())))
                         }
                         _ => {
                             panic!(
