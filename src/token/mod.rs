@@ -5,8 +5,8 @@ pub mod runtime;
 
 use base::{ArrayToken, BooleanToken, NullToken, NumberToken, StringToken, ValueToken};
 use logic::{
-    BreakToken, ExpressionToken, FnCallToken, FnToken, IfToken, LetAssignToken, LetToken,
-    LoopToken, ReturnToken,
+    BreakToken, ExpressionToken, FnCallToken, FnToken, IfToken, LetAssignNumToken, LetAssignToken,
+    LetToken, LoopToken, ReturnToken,
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
@@ -25,6 +25,7 @@ impl Default for TokenLocation {
 pub enum Token {
     Let(LetToken),
     LetAssign(LetAssignToken),
+    LetAssignNum(LetAssignNumToken),
     Fn(FnToken),
     FnCall(FnCallToken),
     Loop(LoopToken),
@@ -339,7 +340,11 @@ impl Tokenizer {
                     }));
                 }
             } else if let Token::Let(let_token) = token {
-                if !let_token.is_const && segment.starts_with(&format!("{} = ", let_token.name)) {
+                if let_token.is_const {
+                    continue;
+                }
+
+                if segment.starts_with(&format!("{} = ", let_token.name)) {
                     let value = self.parse_expression(segment[let_token.name.len() + 3..].trim());
                     if value.is_none() {
                         panic!("unexpected value at line {} (did you typo?)", unsafe {
@@ -349,6 +354,78 @@ impl Tokenizer {
 
                     return Some(Token::LetAssign(LetAssignToken {
                         name: let_token.name.clone(),
+                        value: Rc::new(value.unwrap()),
+                    }));
+                }
+
+                if segment.starts_with(&format!("{} += ", let_token.name)) {
+                    let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
+                    if value.is_none() {
+                        panic!("unexpected value at line {} (did you typo?)", unsafe {
+                            LINE
+                        });
+                    }
+
+                    return Some(Token::LetAssignNum(LetAssignNumToken {
+                        name: let_token.name.clone(),
+                        operation: logic::NumOperation::Add,
+                        value: Rc::new(value.unwrap()),
+                    }));
+                } else if segment == format!("{}++", let_token.name) {
+                    return Some(Token::LetAssignNum(LetAssignNumToken {
+                        name: let_token.name.clone(),
+                        operation: logic::NumOperation::Add,
+                        value: Rc::new(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                            location: self.location(),
+                            value: 1.0,
+                        }))),
+                    }));
+                } else if segment.starts_with(&format!("{} -= ", let_token.name)) {
+                    let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
+                    if value.is_none() {
+                        panic!("unexpected value at line {} (did you typo?)", unsafe {
+                            LINE
+                        });
+                    }
+
+                    return Some(Token::LetAssignNum(LetAssignNumToken {
+                        name: let_token.name.clone(),
+                        operation: logic::NumOperation::Sub,
+                        value: Rc::new(value.unwrap()),
+                    }));
+                } else if segment == format!("{}--", let_token.name) {
+                    return Some(Token::LetAssignNum(LetAssignNumToken {
+                        name: let_token.name.clone(),
+                        operation: logic::NumOperation::Sub,
+                        value: Rc::new(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                            location: self.location(),
+                            value: 1.0,
+                        }))),
+                    }));
+                } else if segment.starts_with(&format!("{} *= ", let_token.name)) {
+                    let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
+                    if value.is_none() {
+                        panic!("unexpected value at line {} (did you typo?)", unsafe {
+                            LINE
+                        });
+                    }
+
+                    return Some(Token::LetAssignNum(LetAssignNumToken {
+                        name: let_token.name.clone(),
+                        operation: logic::NumOperation::Mul,
+                        value: Rc::new(value.unwrap()),
+                    }));
+                } else if segment.starts_with(&format!("{} /= ", let_token.name)) {
+                    let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
+                    if value.is_none() {
+                        panic!("unexpected value at line {} (did you typo?)", unsafe {
+                            LINE
+                        });
+                    }
+
+                    return Some(Token::LetAssignNum(LetAssignNumToken {
+                        name: let_token.name.clone(),
+                        operation: logic::NumOperation::Div,
                         value: Rc::new(value.unwrap()),
                     }));
                 }

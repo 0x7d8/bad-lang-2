@@ -3,6 +3,14 @@ use super::{Token, base::ValueToken};
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug, Clone)]
+pub enum NumOperation {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+#[derive(Debug, Clone)]
 pub struct LetToken {
     pub name: String,
     pub is_const: bool,
@@ -19,6 +27,13 @@ pub enum ExpressionToken {
 #[derive(Debug, Clone)]
 pub struct LetAssignToken {
     pub name: String,
+    pub value: Rc<ExpressionToken>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LetAssignNumToken {
+    pub name: String,
+    pub operation: NumOperation,
     pub value: Rc<ExpressionToken>,
 }
 

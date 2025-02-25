@@ -1,7 +1,7 @@
 use crate::token::{
     Token,
     base::{BaseToken, NullToken, ValueToken},
-    logic::{ExpressionToken, LetToken},
+    logic::{ExpressionToken, LetToken, NumOperation},
     runtime,
 };
 
@@ -245,6 +245,41 @@ impl Runtime {
                     self.current_scope
                         .borrow_mut()
                         .set(&assign_token.name, Rc::new(RefCell::new(expr_value)));
+                }
+            }
+            Token::LetAssignNum(assign_token) => {
+                let value = self.extract_value(&assign_token.value).unwrap();
+
+                if let Some(var) = self.current_scope.borrow().get(&assign_token.name) {
+                    let mut var_ref = var.borrow_mut();
+
+                    if let ExpressionToken::Value(ValueToken::Number(ref mut number_token)) =
+                        *var_ref
+                    {
+                        if let ValueToken::Number(value_token) = &value {
+                            match assign_token.operation {
+                                NumOperation::Add => {
+                                    number_token.value += value_token.value;
+                                }
+                                NumOperation::Sub => {
+                                    number_token.value -= value_token.value;
+                                }
+                                NumOperation::Mul => {
+                                    number_token.value *= value_token.value;
+                                }
+                                NumOperation::Div => {
+                                    number_token.value /= value_token.value;
+                                }
+                            }
+                        }
+                    } else {
+                        *var_ref = ExpressionToken::Value(value);
+                    }
+                } else {
+                    self.current_scope.borrow_mut().set(
+                        &assign_token.name,
+                        Rc::new(RefCell::new(ExpressionToken::Value(value))),
+                    );
                 }
             }
             _ => {}
