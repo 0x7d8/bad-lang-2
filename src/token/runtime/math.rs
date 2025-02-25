@@ -11,7 +11,7 @@ use super::string;
 
 use std::{rc::Rc, sync::LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["math#eval", "#="]);
+pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["math#eval", "#=", "math#floor", "math#ceil", "math#round"]);
 
 pub fn run(
     name: &str,
@@ -47,6 +47,54 @@ pub fn run(
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                 location: Default::default(),
                 value: result,
+            })))
+        }
+        "math#floor" => {
+            if args.len() != 1 {
+                panic!("math#floor requires 1 argument on line {}", unsafe { LINE });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let value = match value {
+                ValueToken::Number(value) => value.value,
+                _ => panic!("math#floor requires a number on line {}", unsafe { LINE }),
+            };
+
+            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
+                value: value.floor(),
+            })))
+        }
+        "math#ceil" => {
+            if args.len() != 1 {
+                panic!("math#ceil requires 1 argument on line {}", unsafe { LINE });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let value = match value {
+                ValueToken::Number(value) => value.value,
+                _ => panic!("math#ceil requires a number on line {}", unsafe { LINE }),
+            };
+
+            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
+                value: value.ceil(),
+            })))
+        }
+        "math#round" => {
+            if args.len() != 1 {
+                panic!("math#round requires 1 argument on line {}", unsafe { LINE });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let value = match value {
+                ValueToken::Number(value) => value.value,
+                _ => panic!("math#round requires a number on line {}", unsafe { LINE }),
+            };
+
+            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
+                value: value.round(),
             })))
         }
         _ => None,
