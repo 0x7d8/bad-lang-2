@@ -3,6 +3,7 @@ pub mod fs;
 pub mod io;
 pub mod logic;
 pub mod math;
+pub mod rng;
 pub mod string;
 pub mod time;
 
@@ -21,6 +22,7 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec.extend(&*array::FUNCTIONS);
     vec.extend(&*logic::FUNCTIONS);
     vec.extend(&*time::FUNCTIONS);
+    vec.extend(&*rng::FUNCTIONS);
 
     vec
 });
@@ -44,6 +46,8 @@ pub fn run(
         logic::run(name, args, runtime)
     } else if time::FUNCTIONS.contains(&name) {
         time::run(name, args, runtime)
+    } else if rng::FUNCTIONS.contains(&name) {
+        rng::run(name, args, runtime)
     } else {
         None
     }

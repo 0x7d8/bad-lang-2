@@ -167,6 +167,10 @@ impl Tokenizer {
     pub fn tokenize(&mut self, mut segment: &str) -> Option<Token> {
         segment = segment.trim();
 
+        if segment.is_empty() || segment.starts_with("//") || segment.starts_with("#") {
+            return None;
+        }
+
         if segment == "}" {
             if !self.inside.is_empty() {
                 self.inside.pop().unwrap();
@@ -429,7 +433,9 @@ impl Tokenizer {
             }
         }
 
-        None
+        panic!("unexpected token at line {} (did you typo?)", unsafe {
+            LINE
+        });
     }
 
     pub fn parse_expression(&self, segment: &str) -> Option<ExpressionToken> {
@@ -519,7 +525,9 @@ impl Tokenizer {
             }
         }
 
-        None
+        panic!("unexpected expression at line {} (did you typo?)", unsafe {
+            LINE
+        });
     }
 
     pub fn parse_args(&self, segment: &str) -> Vec<ExpressionToken> {
