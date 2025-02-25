@@ -38,9 +38,9 @@ pub fn run(
             })))
         }
         "string#format" => {
-            if args.len() < 2 {
+            if args.len() < 1 {
                 panic!(
-                    "string#format requires at least 2 arguments on line {}",
+                    "string#format requires at least 1 argument on line {}",
                     unsafe { LINE }
                 );
             }

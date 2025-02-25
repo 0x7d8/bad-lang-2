@@ -9,7 +9,9 @@ use crate::{
 
 use std::{rc::Rc, sync::LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["math#eval"]);
+use super::string;
+
+pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["math#eval", "#="]);
 
 pub fn run(
     name: &str,
@@ -25,6 +27,18 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             let path = value.value().to_string();
             let result = meval::eval_str(&path).unwrap();
+
+            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                value: result,
+            })))
+        }
+        "#=" => {
+            if args.len() < 1 {
+                panic!("#= (math#eval) requires at least 1 argument on line {}", unsafe { LINE });
+            }
+
+            let expression = string::run("string#format", args, runtime)?;
+            let result = meval::eval_str(&runtime.extract_value(&expression)?.value()).unwrap();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                 value: result,

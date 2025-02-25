@@ -4,6 +4,7 @@ pub mod io;
 pub mod logic;
 pub mod math;
 pub mod string;
+pub mod time;
 
 use super::logic::ExpressionToken;
 use crate::runtime::Runtime;
@@ -19,6 +20,7 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec.extend(&*math::FUNCTIONS);
     vec.extend(&*array::FUNCTIONS);
     vec.extend(&*logic::FUNCTIONS);
+    vec.extend(&*time::FUNCTIONS);
 
     vec
 });
@@ -40,6 +42,8 @@ pub fn run(
         array::run(name, args, runtime)
     } else if logic::FUNCTIONS.contains(&name) {
         logic::run(name, args, runtime)
+    } else if time::FUNCTIONS.contains(&name) {
+        time::run(name, args, runtime)
     } else {
         None
     }

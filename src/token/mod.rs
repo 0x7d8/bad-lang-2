@@ -77,13 +77,13 @@ impl Tokenizer {
     fn push_token(&mut self, token: Token) {
         if !self.inside.is_empty() {
             match &*self.inside.last().unwrap().borrow() {
-                Token::Fn(ref fn_token) => {
+                Token::Fn(fn_token) => {
                     fn_token.body.borrow_mut().push(token);
                 }
-                Token::Loop(ref loop_token) => {
+                Token::Loop(loop_token) => {
                     loop_token.body.borrow_mut().push(token);
                 }
-                Token::If(ref if_token) => {
+                Token::If(if_token) => {
                     if_token.body.borrow_mut().push(token);
                 }
                 _ => unreachable!(),
@@ -103,19 +103,19 @@ impl Tokenizer {
 
         for inside in &self.inside {
             match &*inside.borrow() {
-                Token::Fn(ref fn_token) => {
+                Token::Fn(fn_token) => {
                     for token in fn_token.body.borrow().iter() {
                         tokens.push(token.clone());
                         self.add_nested_tokens(token, &mut tokens);
                     }
                 }
-                Token::Loop(ref loop_token) => {
+                Token::Loop(loop_token) => {
                     for token in loop_token.body.borrow().iter() {
                         tokens.push(token.clone());
                         self.add_nested_tokens(token, &mut tokens);
                     }
                 }
-                Token::If(ref if_token) => {
+                Token::If(if_token) => {
                     for token in if_token.body.borrow().iter() {
                         tokens.push(token.clone());
                         self.add_nested_tokens(token, &mut tokens);

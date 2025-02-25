@@ -15,7 +15,7 @@ pub struct StringToken {
 
 impl BaseToken for StringToken {
     fn inspect(&self) -> String {
-        format!("String({}) {{\n{}\n}}", self.value.len(), self.value)
+        format!("String({}) {{ {} }}", self.value.len(), self.value)
     }
 
     fn value(&self) -> String {
@@ -34,7 +34,7 @@ pub struct NumberToken {
 
 impl BaseToken for NumberToken {
     fn inspect(&self) -> String {
-        format!("Number(f64) {{\n{}\n}}", self.value)
+        format!("Number(f64) {{ {} }}", self.value)
     }
 
     fn value(&self) -> String {
@@ -53,7 +53,7 @@ pub struct BooleanToken {
 
 impl BaseToken for BooleanToken {
     fn inspect(&self) -> String {
-        format!("Boolean(bool) {{\n{}\n}}", self.value)
+        format!("Boolean(bool) {{ {} }}", self.value)
     }
 
     fn value(&self) -> String {
@@ -75,30 +75,24 @@ impl BaseToken for ArrayToken {
         let mut result = format!("Array({}) {{\n", self.value.borrow().len());
 
         for token in self.value.borrow().iter() {
-            match token {
-                ExpressionToken::Value(value_token) => {
-                    result.push_str(&format!("{}\n", value_token.inspect()));
-                }
-                _ => {}
+            if let ExpressionToken::Value(value_token) = token {
+                result.push_str(&format!("{}\n", value_token.inspect()));
             }
         }
 
-        return result + "}";
+        result + "}"
     }
 
     fn value(&self) -> String {
-        let mut result = format!("[\n");
+        let mut result = "[\n".to_string();
 
         for token in self.value.borrow().iter() {
-            match token {
-                ExpressionToken::Value(value_token) => {
-                    result.push_str(&format!("{}\n", value_token.value()));
-                }
-                _ => {}
+            if let ExpressionToken::Value(value_token) = token {
+                result.push_str(&format!("{}\n", value_token.value()));
             }
         }
 
-        return result + "]";
+        result + "]"
     }
 
     fn truthy(&self) -> bool {
