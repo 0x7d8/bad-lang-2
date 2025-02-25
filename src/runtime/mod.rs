@@ -35,23 +35,36 @@ impl Scope {
     fn set(&mut self, name: &str, value: Rc<RefCell<ExpressionToken>>) {
         self.variables.insert(name.to_string(), value);
     }
+
+    fn update(&mut self, name: &str, value: ExpressionToken) -> bool {
+        if let Some(var) = self.variables.get(name) {
+            *var.borrow_mut() = value;
+            return true;
+        } else if let Some(parent) = &self.parent {
+            return parent.borrow_mut().update(name, value);
+        }
+        false
+    }
 }
 
 pub struct Runtime {
     tokens: Vec<Token>,
     current_scope: Rc<RefCell<Scope>>,
     call_stack: Vec<Token>,
+    globals: HashMap<String, Rc<RefCell<ExpressionToken>>>,
 }
 
 impl Runtime {
     pub fn new(tokens: Vec<Token>) -> Self {
         let global_scope = Rc::new(RefCell::new(Scope::new(None)));
+        let mut globals = HashMap::new();
 
         for token in &tokens {
             if let Token::Let(let_token) = token {
-                global_scope
-                    .borrow_mut()
-                    .set(&let_token.name, let_token.value.clone());
+                let var = let_token.value.clone();
+                global_scope.borrow_mut().set(&let_token.name, var.clone());
+
+                globals.insert(let_token.name.clone(), var);
             }
         }
 
@@ -59,6 +72,7 @@ impl Runtime {
             tokens,
             current_scope: global_scope,
             call_stack: Vec::new(),
+            globals,
         }
     }
 
@@ -72,7 +86,12 @@ impl Runtime {
         match token {
             Token::Let(let_token) => {
                 let value = self.extract_value(&let_token.value.borrow()).unwrap();
-                *let_token.value.borrow_mut() = ExpressionToken::Value(value);
+                let expr_value = ExpressionToken::Value(value);
+                *let_token.value.borrow_mut() = expr_value.clone();
+
+                if self.globals.contains_key(&let_token.name) {
+                    *self.globals.get(&let_token.name).unwrap().borrow_mut() = expr_value;
+                }
             }
             Token::Loop(loop_token) => {
                 self.call_stack.push(Token::Loop(loop_token.clone()));
@@ -170,7 +189,14 @@ impl Runtime {
             }
             Token::FnCall(call_token) => {
                 if runtime::FUNCTIONS.contains(&call_token.name.as_str()) {
-                    return runtime::run(call_token.name.as_str(), &call_token.args, self);
+                    let mut arg_refs = Vec::new();
+                    for arg in &call_token.args {
+                        arg_refs.push(arg.clone());
+                    }
+
+                    let result = runtime::run(call_token.name.as_str(), &call_token.args, self);
+
+                    return result;
                 }
 
                 let fn_token_opt = self.tokens.iter().find_map(|token| {
@@ -194,51 +220,47 @@ impl Runtime {
 
                     for token in fn_token.body.borrow().iter() {
                         if let Token::Let(let_token) = token {
-                            self.current_scope
-                                .borrow_mut()
-                                .set(&let_token.name, let_token.value.clone());
+                            if !fn_token.args.contains(&let_token.name) {
+                                self.current_scope
+                                    .borrow_mut()
+                                    .set(&let_token.name, let_token.value.clone());
+                            }
                         }
                     }
 
                     let mut evaluated_args = Vec::new();
                     for (index, arg_name) in fn_token.args.iter().enumerate() {
-                        let arg_expr = call_token
-                            .args
-                            .get(index)
-                            .unwrap_or(&Rc::new(ExpressionToken::Value(ValueToken::Null(
-                                NullToken {
-                                    location: Default::default(),
-                                },
-                            ))))
-                            .clone();
+                        if let Some(arg_expr) = call_token.args.get(index) {
+                            if let ExpressionToken::Let(let_token) = &**arg_expr {
+                                if let Some(original_var) =
+                                    self.find_original_variable(&let_token.name)
+                                {
+                                    evaluated_args.push((arg_name.clone(), original_var));
+                                    continue;
+                                }
+                            }
 
-                        let arg_value = self.extract_value(&arg_expr).unwrap();
-                        evaluated_args.push((arg_name.clone(), arg_value));
+                            let arg_value = self.extract_value(&arg_expr).unwrap();
+                            let value_expr = ExpressionToken::Value(arg_value);
+                            let value_ref = Rc::new(RefCell::new(value_expr));
+                            evaluated_args.push((arg_name.clone(), value_ref));
+                        } else {
+                            let null_value = ExpressionToken::Value(ValueToken::Null(NullToken {
+                                location: Default::default(),
+                            }));
+                            evaluated_args
+                                .push((arg_name.clone(), Rc::new(RefCell::new(null_value))));
+                        }
                     }
 
                     for (arg_name, arg_value) in evaluated_args {
-                        for token in fn_token.body.borrow().iter() {
-                            if let Token::Let(let_token) = token {
-                                if let_token.name == arg_name {
-                                    *let_token.value.borrow_mut() =
-                                        ExpressionToken::Value(arg_value.clone());
-                                    break;
-                                }
-                            }
-                        }
+                        self.current_scope.borrow_mut().set(&arg_name, arg_value);
                     }
 
                     let mut return_value = None;
                     let body_tokens = fn_token.body.borrow().clone();
 
                     for token in body_tokens.iter() {
-                        if let Token::Return(return_token) = token {
-                            let return_expr = return_token.value.clone();
-                            let value = self.extract_value(&return_expr).unwrap();
-                            return_value = Some(ExpressionToken::Value(value));
-                            break;
-                        }
-
                         let value = self.execute(token);
 
                         if value.is_none() {
@@ -259,12 +281,20 @@ impl Runtime {
                 let value = self.extract_value(&assign_token.value).unwrap();
                 let expr_value = ExpressionToken::Value(value);
 
-                if let Some(var) = self.current_scope.borrow().get(&assign_token.name) {
-                    *var.borrow_mut() = expr_value;
-                } else {
-                    self.current_scope
-                        .borrow_mut()
-                        .set(&assign_token.name, Rc::new(RefCell::new(expr_value)));
+                let updated = self
+                    .current_scope
+                    .borrow_mut()
+                    .update(&assign_token.name, expr_value.clone());
+
+                if !updated {
+                    self.current_scope.borrow_mut().set(
+                        &assign_token.name,
+                        Rc::new(RefCell::new(expr_value.clone())),
+                    );
+                }
+
+                if self.globals.contains_key(&assign_token.name) {
+                    *self.globals.get(&assign_token.name).unwrap().borrow_mut() = expr_value;
                 }
             }
             Token::LetAssignNum(assign_token) => {
@@ -293,13 +323,24 @@ impl Runtime {
                             }
                         }
                     } else {
-                        *var_ref = ExpressionToken::Value(value);
+                        *var_ref = ExpressionToken::Value(value.clone());
+                    }
+
+                    if self.globals.contains_key(&assign_token.name) {
+                        *self.globals.get(&assign_token.name).unwrap().borrow_mut() =
+                            ExpressionToken::Value(value);
                     }
                 } else {
-                    self.current_scope.borrow_mut().set(
-                        &assign_token.name,
-                        Rc::new(RefCell::new(ExpressionToken::Value(value))),
-                    );
+                    let value_expr = ExpressionToken::Value(value.clone());
+                    let value_ref = Rc::new(RefCell::new(value_expr));
+
+                    self.current_scope
+                        .borrow_mut()
+                        .set(&assign_token.name, value_ref.clone());
+
+                    if self.call_stack.is_empty() {
+                        self.globals.insert(assign_token.name.clone(), value_ref);
+                    }
                 }
             }
             _ => {}
@@ -308,6 +349,14 @@ impl Runtime {
         Some(ExpressionToken::Value(ValueToken::Null(NullToken {
             location: Default::default(),
         })))
+    }
+
+    fn find_original_variable(&self, name: &str) -> Option<Rc<RefCell<ExpressionToken>>> {
+        if let Some(global_var) = self.globals.get(name) {
+            return Some(global_var.clone());
+        }
+
+        self.current_scope.borrow().get(name)
     }
 
     pub fn extract_value(&mut self, token: &ExpressionToken) -> Option<ValueToken> {
@@ -323,9 +372,17 @@ impl Runtime {
                         self.extract_value(&var.borrow())
                     }
                 } else {
-                    Some(ValueToken::Null(NullToken {
-                        location: Default::default(),
-                    }))
+                    if let Some(global_var) = self.globals.get(name).cloned() {
+                        if let ExpressionToken::Value(value) = &*global_var.borrow() {
+                            Some(value.clone())
+                        } else {
+                            self.extract_value(&global_var.borrow())
+                        }
+                    } else {
+                        Some(ValueToken::Null(NullToken {
+                            location: Default::default(),
+                        }))
+                    }
                 }
             }
             ExpressionToken::FnCall(value) => {
