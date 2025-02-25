@@ -1,7 +1,7 @@
 use crate::token::{
     Token,
     base::{BaseToken, NullToken, ValueToken},
-    logic::{ExpressionToken, LetToken, NumOperation},
+    logic::{ExpressionToken, LetToken, NumOperation, ReturnToken},
     runtime,
 };
 
@@ -132,10 +132,16 @@ impl Runtime {
                     let body = if_token.body.borrow();
 
                     for token in body.iter() {
-                        if self.execute(token).is_none() {
+                        let value = self.execute(token);
+
+                        if value.is_none() {
                             self.current_scope = old_scope;
                             self.call_stack.pop();
                             return None;
+                        } else if let Some(ExpressionToken::Return(return_token)) = value {
+                            self.current_scope = old_scope;
+                            self.call_stack.pop();
+                            return Some(ExpressionToken::Return(return_token));
                         }
                     }
 
@@ -153,7 +159,14 @@ impl Runtime {
             }
             Token::Return(token) => {
                 let value = self.extract_value(&token.value).unwrap();
-                return Some(ExpressionToken::Value(value));
+
+                for token in self.call_stack.iter().rev() {
+                    if let Token::Fn(_) = token {
+                        return Some(ExpressionToken::Return(ReturnToken {
+                            value: Rc::new(ExpressionToken::Value(value)),
+                        }));
+                    }
+                }
             }
             Token::FnCall(call_token) => {
                 if runtime::FUNCTIONS.contains(&call_token.name.as_str()) {
@@ -224,7 +237,14 @@ impl Runtime {
                             let value = self.extract_value(&return_expr).unwrap();
                             return_value = Some(ExpressionToken::Value(value));
                             break;
-                        } else if self.execute(token).is_none() {
+                        }
+
+                        let value = self.execute(token);
+
+                        if value.is_none() {
+                            break;
+                        } else if let Some(ExpressionToken::Return(return_token)) = value {
+                            return_value = Some((*return_token.value).clone());
                             break;
                         }
                     }
@@ -317,6 +337,7 @@ impl Runtime {
 
                 self.extract_value(&value)
             }
+            ExpressionToken::Return(value) => self.extract_value(&value.value),
         }
     }
 }

@@ -9,7 +9,8 @@ use crate::{
 
 use std::{rc::Rc, sync::LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["time#sleep", "time#now"]);
+pub static FUNCTIONS: LazyLock<Vec<&str>> =
+    LazyLock::new(|| vec!["time#sleep", "time#now", "time#now_ms"]);
 
 pub fn run(
     name: &str,
@@ -41,11 +42,11 @@ pub fn run(
             let unix_time = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_secs();
+                .as_millis();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                 location: Default::default(),
-                value: unix_time as f64,
+                value: unix_time as f64 / 1000.0,
             })))
         }
         _ => None,

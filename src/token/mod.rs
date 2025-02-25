@@ -259,10 +259,7 @@ impl Tokenizer {
                 .push(Rc::new(RefCell::new(Token::Loop(LoopToken { body }))));
 
             return None;
-        } else if segment.starts_with("return")
-            && !self.inside.is_empty()
-            && matches!(&*self.inside.last().unwrap().borrow(), Token::Fn(_))
-        {
+        } else if segment.starts_with("return") && !self.inside.is_empty() {
             if segment.len() < 7 {
                 return Some(Token::Return(ReturnToken {
                     value: Rc::new(ExpressionToken::Value(ValueToken::Null(NullToken {

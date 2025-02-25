@@ -19,6 +19,7 @@ pub struct LetToken {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionToken {
+    Return(ReturnToken),
     FnCall(FnCallToken),
     Value(ValueToken),
     Let(LetToken),
