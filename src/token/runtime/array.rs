@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use std::{cell::RefCell, rc::Rc, sync::LazyLock};
+use std::sync::{Arc, LazyLock, Mutex};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec![
@@ -26,7 +26,7 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
 
 pub fn run(
     name: &str,
-    args: &[Rc<ExpressionToken>],
+    args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {
@@ -43,7 +43,11 @@ pub fn run(
                 ValueToken::Array(array) => {
                     for arg in args.iter().skip(1) {
                         let value = runtime.extract_value(arg)?;
-                        array.value.borrow_mut().push(ExpressionToken::Value(value));
+                        array
+                            .value
+                            .lock()
+                            .unwrap()
+                            .push(ExpressionToken::Value(value));
                     }
 
                     Some(ExpressionToken::Value(ValueToken::Array(array.clone())))
@@ -64,13 +68,15 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             match value {
                 ValueToken::Array(array) => {
-                    let value = array
-                        .value
-                        .borrow_mut()
-                        .pop()
-                        .unwrap_or(ExpressionToken::Value(ValueToken::Null(NullToken {
-                            location: Default::default(),
-                        })));
+                    let value =
+                        array
+                            .value
+                            .lock()
+                            .unwrap()
+                            .pop()
+                            .unwrap_or(ExpressionToken::Value(ValueToken::Null(NullToken {
+                                location: Default::default(),
+                            })));
 
                     Some(value)
                 }
@@ -90,7 +96,7 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             match value {
                 ValueToken::Array(array) => {
-                    let len = array.value.borrow().len();
+                    let len = array.value.lock().unwrap().len();
 
                     Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                         location: Default::default(),
@@ -115,11 +121,11 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             match value {
                 ValueToken::Array(array) => {
-                    let value = array.value.borrow().clone();
+                    let value = array.value.lock().unwrap().clone();
 
                     Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                         location: Default::default(),
-                        value: Rc::new(RefCell::new(value)),
+                        value: Arc::new(Mutex::new(value)),
                     })))
                 }
                 _ => {
@@ -145,7 +151,7 @@ pub fn run(
 
                 match value {
                     ValueToken::Array(array) => {
-                        result.extend(array.value.borrow().iter().cloned());
+                        result.extend(array.value.lock().unwrap().iter().cloned());
                     }
                     _ => {
                         panic!(
@@ -158,7 +164,7 @@ pub fn run(
 
             Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                 location: Default::default(),
-                value: Rc::new(RefCell::new(result)),
+                value: Arc::new(Mutex::new(result)),
             })))
         }
         "array#contains" => {
@@ -173,7 +179,7 @@ pub fn run(
                 ValueToken::Array(array) => {
                     let target = runtime.extract_value(&args[1])?;
 
-                    let contains = array.value.borrow().iter().any(|item| {
+                    let contains = array.value.lock().unwrap().iter().any(|item| {
                         let item = runtime.extract_value(item).unwrap();
                         item.value() == target.value()
                     });
@@ -203,11 +209,12 @@ pub fn run(
                     match index {
                         ValueToken::Number(number) => {
                             let index = number.value as usize;
-                            let value = array.value.borrow().get(index).cloned().unwrap_or({
-                                ExpressionToken::Value(ValueToken::Null(NullToken {
-                                    location: Default::default(),
-                                }))
-                            });
+                            let value =
+                                array.value.lock().unwrap().get(index).cloned().unwrap_or({
+                                    ExpressionToken::Value(ValueToken::Null(NullToken {
+                                        location: Default::default(),
+                                    }))
+                                });
 
                             Some(value)
                         }
@@ -294,7 +301,7 @@ pub fn run(
                     match index {
                         ValueToken::Number(number) => {
                             let index = number.value as usize;
-                            let mut arr = array.value.borrow_mut();
+                            let mut arr = array.value.lock().unwrap();
 
                             if index >= arr.len() {
                                 arr.resize(
@@ -308,6 +315,47 @@ pub fn run(
                             arr[index] = ExpressionToken::Value(value);
 
                             Some(ExpressionToken::Value(ValueToken::Array(array.clone())))
+                        }
+                        _ => {
+                            panic!(
+                                "array#set requires a number as the second argument on line {}",
+                                unsafe { LINE }
+                            );
+                        }
+                    }
+                }
+                ValueToken::Number(num) => {
+                    let index = runtime.extract_value(&args[1])?;
+
+                    match index {
+                        ValueToken::Number(number) => {
+                            let index = number.value as usize;
+
+                            let integer = num.value as u64;
+                            let bit = runtime.extract_value(&args[2])?;
+                            let bit = match bit {
+                                ValueToken::Boolean(boolean) => {
+                                    if boolean.value {
+                                        1
+                                    } else {
+                                        0
+                                    }
+                                }
+                                _ => {
+                                    panic!(
+                                        "array#set requires a boolean as the third argument on line {}",
+                                        unsafe { LINE }
+                                    );
+                                }
+                            };
+
+                            let mask = 1 << index;
+                            let value = (integer & !mask) | (bit << index);
+
+                            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                                location: Default::default(),
+                                value: value as f64,
+                            })))
                         }
                         _ => {
                             panic!(

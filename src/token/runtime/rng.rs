@@ -7,13 +7,13 @@ use crate::{
     },
 };
 
-use std::{rc::Rc, sync::LazyLock};
+use std::sync::{Arc, LazyLock};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["rng#rand", "rng#rand_range"]);
 
 pub fn run(
     name: &str,
-    args: &[Rc<ExpressionToken>],
+    args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {

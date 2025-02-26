@@ -9,13 +9,14 @@ use crate::{
 
 use super::string;
 
-use std::{rc::Rc, sync::LazyLock};
+use std::sync::{Arc, LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["math#eval", "#=", "math#floor", "math#ceil", "math#round"]);
+pub static FUNCTIONS: LazyLock<Vec<&str>> =
+    LazyLock::new(|| vec!["math#eval", "#=", "math#floor", "math#ceil", "math#round"]);
 
 pub fn run(
     name: &str,
-    args: &[Rc<ExpressionToken>],
+    args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {

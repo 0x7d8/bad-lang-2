@@ -7,14 +7,17 @@ use crate::{
     },
 };
 
-use std::{io::Read, rc::Rc, sync::LazyLock};
+use std::{
+    io::Read,
+    sync::{Arc, LazyLock},
+};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> =
     LazyLock::new(|| vec!["fs#readstr", "fs#readstr_until"]);
 
 pub fn run(
     name: &str,
-    args: &[Rc<ExpressionToken>],
+    args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     match name {

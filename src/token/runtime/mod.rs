@@ -5,12 +5,13 @@ pub mod logic;
 pub mod math;
 pub mod rng;
 pub mod string;
+pub mod tcp;
 pub mod time;
 
 use super::logic::ExpressionToken;
 use crate::runtime::Runtime;
 
-use std::{rc::Rc, sync::LazyLock};
+use std::sync::{Arc, LazyLock};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     let mut vec = Vec::new();
@@ -23,13 +24,14 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec.extend(&*logic::FUNCTIONS);
     vec.extend(&*time::FUNCTIONS);
     vec.extend(&*rng::FUNCTIONS);
+    vec.extend(&*tcp::FUNCTIONS);
 
     vec
 });
 
 pub fn run(
     name: &str,
-    args: &[Rc<ExpressionToken>],
+    args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
 ) -> Option<ExpressionToken> {
     if io::FUNCTIONS.contains(&name) {
@@ -48,6 +50,8 @@ pub fn run(
         time::run(name, args, runtime)
     } else if rng::FUNCTIONS.contains(&name) {
         rng::run(name, args, runtime)
+    } else if tcp::FUNCTIONS.contains(&name) {
+        tcp::run(name, args, runtime)
     } else {
         None
     }

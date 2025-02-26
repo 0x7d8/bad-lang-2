@@ -1,6 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, Mutex};
 
-use super::{TokenLocation, logic::ExpressionToken};
+use super::{Token, TokenLocation, logic::ExpressionToken};
 
 pub trait BaseToken {
     fn inspect(&self) -> String;
@@ -71,14 +71,14 @@ impl BaseToken for BooleanToken {
 #[derive(Debug, Clone)]
 pub struct ArrayToken {
     pub location: TokenLocation,
-    pub value: Rc<RefCell<Vec<ExpressionToken>>>,
+    pub value: Arc<Mutex<Vec<ExpressionToken>>>,
 }
 
 impl BaseToken for ArrayToken {
     fn inspect(&self) -> String {
-        let mut result = format!("Array({}) {{\n", self.value.borrow().len());
+        let mut result = format!("Array({}) {{\n", self.value.lock().unwrap().len());
 
-        for token in self.value.borrow().iter() {
+        for token in self.value.lock().unwrap().iter() {
             if let ExpressionToken::Value(value_token) = token {
                 result.push_str(&format!("{}\n", value_token.inspect()));
             }
@@ -90,7 +90,7 @@ impl BaseToken for ArrayToken {
     fn value(&self) -> String {
         let mut result = "[\n".to_string();
 
-        for token in self.value.borrow().iter() {
+        for token in self.value.lock().unwrap().iter() {
             if let ExpressionToken::Value(value_token) = token {
                 result.push_str(&format!("{}\n", value_token.value()));
             }
@@ -100,7 +100,46 @@ impl BaseToken for ArrayToken {
     }
 
     fn truthy(&self) -> bool {
-        !self.value.borrow().is_empty()
+        !self.value.lock().unwrap().is_empty()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BufferToken {
+    pub location: TokenLocation,
+    pub value: Arc<Mutex<Vec<u8>>>,
+}
+
+impl BaseToken for BufferToken {
+    fn inspect(&self) -> String {
+        let mut result = format!("Buffer({}) {{ ", self.value.lock().unwrap().len());
+
+        for byte in self.value.lock().unwrap().iter().take(100) {
+            result.push_str(&format!("{:02x} ", byte));
+        }
+
+        if self.value.lock().unwrap().len() > 100 {
+            result
+                .push_str(format!("... {} more ", self.value.lock().unwrap().len() - 100).as_str());
+        }
+
+        result + "}"
+    }
+
+    fn value(&self) -> String {
+        let length = self.value.lock().unwrap().len();
+
+        self.value
+            .lock()
+            .unwrap()
+            .iter()
+            .fold(String::with_capacity(length * 3), |acc, byte| {
+                acc + &format!("{:02x} ", byte)
+            })
+    }
+
+    fn truthy(&self) -> bool {
+        !self.value.lock().unwrap().is_empty()
     }
 }
 
@@ -124,12 +163,61 @@ impl BaseToken for NullToken {
 }
 
 #[derive(Debug, Clone)]
+pub struct NativeMemoryToken {
+    pub name: String,
+    pub memory: Arc<Mutex<Box<dyn std::any::Any>>>,
+}
+
+impl BaseToken for NativeMemoryToken {
+    fn inspect(&self) -> String {
+        format!("NativeMemory({}) {{ <native> }}", self.name)
+    }
+
+    fn value(&self) -> String {
+        self.inspect()
+    }
+
+    fn truthy(&self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionToken {
+    pub name: String,
+    pub args: Vec<String>,
+    pub body: Arc<Mutex<Vec<Token>>>,
+}
+
+impl BaseToken for FunctionToken {
+    fn inspect(&self) -> String {
+        format!(
+            "Function({}, {}) {{ <{} tokens> }}",
+            self.name,
+            self.args.join(", "),
+            self.body.lock().unwrap().len()
+        )
+    }
+
+    fn value(&self) -> String {
+        self.inspect()
+    }
+
+    fn truthy(&self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ValueToken {
     String(StringToken),
     Number(NumberToken),
     Boolean(BooleanToken),
     Null(NullToken),
     Array(ArrayToken),
+    Buffer(BufferToken),
+    NativeMemory(NativeMemoryToken),
+    Function(FunctionToken),
 }
 
 impl BaseToken for ValueToken {
@@ -140,6 +228,9 @@ impl BaseToken for ValueToken {
             ValueToken::Boolean(boolean_token) => boolean_token.inspect(),
             ValueToken::Null(null_token) => null_token.inspect(),
             ValueToken::Array(array_token) => array_token.inspect(),
+            ValueToken::Buffer(buffer_token) => buffer_token.inspect(),
+            ValueToken::NativeMemory(native_memory_token) => native_memory_token.inspect(),
+            ValueToken::Function(function_token) => function_token.inspect(),
         }
     }
 
@@ -150,6 +241,9 @@ impl BaseToken for ValueToken {
             ValueToken::Boolean(boolean_token) => boolean_token.value(),
             ValueToken::Null(null_token) => null_token.value(),
             ValueToken::Array(array_token) => array_token.value(),
+            ValueToken::Buffer(buffer_token) => buffer_token.value(),
+            ValueToken::NativeMemory(native_memory_token) => native_memory_token.value(),
+            ValueToken::Function(function_token) => function_token.value(),
         }
     }
 
@@ -160,6 +254,9 @@ impl BaseToken for ValueToken {
             ValueToken::Boolean(boolean_token) => boolean_token.truthy(),
             ValueToken::Null(null_token) => null_token.truthy(),
             ValueToken::Array(array_token) => array_token.truthy(),
+            ValueToken::Buffer(buffer_token) => buffer_token.truthy(),
+            ValueToken::NativeMemory(native_memory_token) => native_memory_token.truthy(),
+            ValueToken::Function(function_token) => function_token.truthy(),
         }
     }
 }

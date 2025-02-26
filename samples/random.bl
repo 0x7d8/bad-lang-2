@@ -1,8 +1,10 @@
 loop {
 	// Always NaN
 	io#println(rng#rand_range(nan, 100))
+
 	// f64 in [0, 1)
 	io#println(rng#rand())
+
 	// f64 in [0, 9] intersection N
 	io#println(math#round(rng#rand_range(0, #=("{} - 1", 10))))
 }

@@ -17,7 +17,7 @@ pub fn extract_number(token: &ExpressionToken) -> Option<f64> {
             }
 
             if let ExpressionToken::Value(ValueToken::Number(NumberToken { value, .. })) =
-                &*value.borrow()
+                &*value.lock().unwrap()
             {
                 Some(*value)
             } else {
@@ -41,7 +41,7 @@ pub fn extract_string(token: &ExpressionToken) -> Option<String> {
             }
 
             if let ExpressionToken::Value(ValueToken::String(StringToken { value, .. })) =
-                &*value.borrow()
+                &*value.lock().unwrap()
             {
                 Some(value.clone())
             } else {
@@ -110,7 +110,7 @@ pub fn inline(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
                 return None;
             }
 
-            match &*value.as_ref().borrow() {
+            match &*value.as_ref().lock().unwrap() {
                 ExpressionToken::Value(ValueToken::String(StringToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::String(StringToken {
                         location: *location,

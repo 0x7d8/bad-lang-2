@@ -3,14 +3,11 @@ fn is_sorted(n) {
 	if (#lt(len, 2)) {
 		return true
 	}
+
 	let prev = array#get(n, 0)
-	prev = array#get(n, 0)
-	// This double assignment is because the language
-	// is broken currently
-	let j = null
-	j = 1
-	let sorted = null
-	sorted = true
+
+	let j = 1
+	let sorted = true
 	loop {
 		if (#eq(j, len)) {
 			sorted = true
@@ -28,21 +25,20 @@ fn is_sorted(n) {
 
 fn bogosort(n) {
 	let len = array#len(n)
-	// Non-fn scope variables seem broken atm
-	let i = null
-	let new_pos = null
-	let tmp = null
+
 	loop {
 		if (is_sorted(n)) {
 			break
 		}
-		i = 0
+		let i = 0
 		loop {
 			if (#gt(#=("{} + 1", i), len)) {
 				break
 			}
-			new_pos = math#round(rng#rand_range(0, #=("{} - 1", len)))
-			tmp = array#get(n, new_pos)
+
+			let new_pos = math#round(rng#rand_range(0, #=("{} - 1", len)))
+			let tmp = array#get(n, new_pos)
+
 			array#set(n, new_pos, array#get(n, i))
 			array#set(n, i, tmp)
 			i++
@@ -50,7 +46,7 @@ fn bogosort(n) {
 	}
 }
 
-let numbers = [5, 4, 3, 2, 1, 0, -1]
+let numbers = [5, -1, 4, 3]
 
 io#println("Before:")
 io#println(numbers)

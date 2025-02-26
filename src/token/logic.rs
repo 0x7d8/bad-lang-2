@@ -1,6 +1,6 @@
 use super::{Token, base::ValueToken};
 
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub enum NumOperation {
@@ -14,7 +14,8 @@ pub enum NumOperation {
 pub struct LetToken {
     pub name: String,
     pub is_const: bool,
-    pub value: Rc<RefCell<ExpressionToken>>,
+    pub is_function: bool,
+    pub value: Arc<Mutex<ExpressionToken>>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,39 +29,32 @@ pub enum ExpressionToken {
 #[derive(Debug, Clone)]
 pub struct LetAssignToken {
     pub name: String,
-    pub value: Rc<ExpressionToken>,
+    pub value: Arc<ExpressionToken>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LetAssignNumToken {
     pub name: String,
     pub operation: NumOperation,
-    pub value: Rc<ExpressionToken>,
-}
-
-#[derive(Debug, Clone)]
-pub struct FnToken {
-    pub name: String,
-    pub args: Vec<String>,
-    pub body: Rc<RefCell<Vec<Token>>>,
+    pub value: Arc<ExpressionToken>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FnCallToken {
     pub name: String,
-    pub args: Vec<Rc<ExpressionToken>>,
+    pub args: Vec<Arc<Mutex<ExpressionToken>>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LoopToken {
-    pub body: Rc<RefCell<Vec<Token>>>,
+    pub body: Arc<Mutex<Vec<Token>>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct IfToken {
     pub reversed: bool,
-    pub condition: Rc<ExpressionToken>,
-    pub body: Rc<RefCell<Vec<Token>>>,
+    pub condition: Arc<ExpressionToken>,
+    pub body: Arc<Mutex<Vec<Token>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -68,5 +62,5 @@ pub struct BreakToken;
 
 #[derive(Debug, Clone)]
 pub struct ReturnToken {
-    pub value: Rc<ExpressionToken>,
+    pub value: Arc<ExpressionToken>,
 }
