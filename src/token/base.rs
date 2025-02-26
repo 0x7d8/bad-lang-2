@@ -165,7 +165,7 @@ impl BaseToken for NullToken {
 #[derive(Debug, Clone)]
 pub struct NativeMemoryToken {
     pub name: String,
-    pub memory: Arc<Mutex<Box<dyn std::any::Any>>>,
+    pub memory: Arc<Mutex<Box<dyn std::any::Any + Send>>>,
 }
 
 impl BaseToken for NativeMemoryToken {

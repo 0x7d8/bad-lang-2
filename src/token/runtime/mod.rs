@@ -6,6 +6,7 @@ pub mod math;
 pub mod rng;
 pub mod string;
 pub mod tcp;
+pub mod thread;
 pub mod time;
 
 use super::logic::ExpressionToken;
@@ -25,6 +26,7 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec.extend(&*time::FUNCTIONS);
     vec.extend(&*rng::FUNCTIONS);
     vec.extend(&*tcp::FUNCTIONS);
+    vec.extend(&*thread::FUNCTIONS);
 
     vec
 });
@@ -52,6 +54,8 @@ pub fn run(
         rng::run(name, args, runtime)
     } else if tcp::FUNCTIONS.contains(&name) {
         tcp::run(name, args, runtime)
+    } else if thread::FUNCTIONS.contains(&name) {
+        thread::run(name, args, runtime)
     } else {
         None
     }

@@ -191,6 +191,7 @@ impl Runtime {
                                 if value.is_none() {
                                     break;
                                 } else if let Some(ExpressionToken::Return(return_token)) = value {
+                                    self.scopes.pop();
                                     self.call_stack.pop();
                                     return Some(ExpressionToken::Return(return_token));
                                 }
