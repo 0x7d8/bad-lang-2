@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use super::{Token, TokenLocation, logic::ExpressionToken};
 
@@ -186,7 +186,7 @@ impl BaseToken for NativeMemoryToken {
 pub struct FunctionToken {
     pub name: String,
     pub args: Vec<String>,
-    pub body: Arc<Mutex<Vec<Token>>>,
+    pub body: Arc<RwLock<Vec<Token>>>,
 }
 
 impl BaseToken for FunctionToken {
@@ -195,7 +195,7 @@ impl BaseToken for FunctionToken {
             "Function({}, {}) {{ <{} tokens> }}",
             self.name,
             self.args.join(", "),
-            self.body.lock().unwrap().len()
+            self.body.read().unwrap().len()
         )
     }
 

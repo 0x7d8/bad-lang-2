@@ -1,6 +1,6 @@
 use super::{Token, base::ValueToken};
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
 pub enum NumOperation {
@@ -15,7 +15,7 @@ pub struct LetToken {
     pub name: String,
     pub is_const: bool,
     pub is_function: bool,
-    pub value: Arc<Mutex<ExpressionToken>>,
+    pub value: Arc<RwLock<ExpressionToken>>,
 }
 
 #[derive(Debug, Clone)]
@@ -42,19 +42,19 @@ pub struct LetAssignNumToken {
 #[derive(Debug, Clone)]
 pub struct FnCallToken {
     pub name: String,
-    pub args: Vec<Arc<Mutex<ExpressionToken>>>,
+    pub args: Vec<Arc<ExpressionToken>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct LoopToken {
-    pub body: Arc<Mutex<Vec<Token>>>,
+    pub body: Arc<RwLock<Vec<Token>>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct IfToken {
     pub reversed: bool,
     pub condition: Arc<ExpressionToken>,
-    pub body: Arc<Mutex<Vec<Token>>>,
+    pub body: Arc<RwLock<Vec<Token>>>,
 }
 
 #[derive(Debug, Clone)]

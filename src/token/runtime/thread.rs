@@ -7,7 +7,7 @@ use crate::{
     },
 };
 
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["thread#launch", "thread#join"]);
 
@@ -41,7 +41,7 @@ pub fn run(
                             name: "main".to_string(),
                             is_const: true,
                             is_function: true,
-                            value: Arc::new(Mutex::new(ExpressionToken::Value(
+                            value: Arc::new(RwLock::new(ExpressionToken::Value(
                                 ValueToken::Function(function),
                             ))),
                         }));
@@ -50,9 +50,7 @@ pub fn run(
                             name: "main".to_string(),
                             args: args
                                 .iter()
-                                .map(|arg| {
-                                    Arc::new(Mutex::new(ExpressionToken::Value(arg.clone())))
-                                })
+                                .map(|arg| Arc::new(ExpressionToken::Value(arg.clone())))
                                 .collect(),
                         }));
 

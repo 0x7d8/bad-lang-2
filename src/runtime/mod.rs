@@ -58,7 +58,7 @@ impl Runtime {
         match token {
             Token::Let(let_token) => {
                 let value = self
-                    .extract_value(&let_token.value.lock().unwrap())
+                    .extract_value(&let_token.value.read().unwrap())
                     .unwrap();
 
                 for variable in self.scopes.last().unwrap().iter() {
@@ -78,7 +78,7 @@ impl Runtime {
                 self.call_stack.push(InsideToken::Loop(loop_token.clone()));
                 self.scope_create();
 
-                let body = loop_token.body.lock().unwrap();
+                let body = loop_token.body.read().unwrap();
 
                 loop {
                     let mut break_loop = false;
@@ -110,7 +110,7 @@ impl Runtime {
                 {
                     self.scope_create();
 
-                    let body = if_token.body.lock().unwrap();
+                    let body = if_token.body.read().unwrap();
 
                     for token in body.iter() {
                         let value = self.execute(token);
@@ -147,13 +147,7 @@ impl Runtime {
             }
             Token::FnCall(call_token) => {
                 if runtime::FUNCTIONS.contains(&call_token.name.as_str()) {
-                    let args: Vec<Arc<ExpressionToken>> = call_token
-                        .args
-                        .iter()
-                        .map(|arg| Arc::new((*arg.lock().unwrap()).clone()))
-                        .collect();
-
-                    let result = runtime::run(call_token.name.as_str(), &args, self);
+                    let result = runtime::run(call_token.name.as_str(), &call_token.args, self);
 
                     return result;
                 }
@@ -173,8 +167,7 @@ impl Runtime {
 
                             for (index, arg) in fn_token.args.iter().enumerate() {
                                 if let Some(arg_expr) = call_token.args.get(index) {
-                                    let extracted =
-                                        self.extract_value(&arg_expr.lock().unwrap()).unwrap();
+                                    let extracted = self.extract_value(&arg_expr).unwrap();
 
                                     self.scope_set(
                                         arg,
@@ -183,7 +176,7 @@ impl Runtime {
                                 }
                             }
 
-                            let body = fn_token.body.lock().unwrap();
+                            let body = fn_token.body.read().unwrap();
 
                             for token in body.iter() {
                                 let value = self.execute(token);
