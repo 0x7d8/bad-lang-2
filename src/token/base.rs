@@ -71,14 +71,14 @@ impl BaseToken for BooleanToken {
 #[derive(Debug, Clone)]
 pub struct ArrayToken {
     pub location: TokenLocation,
-    pub value: Arc<Mutex<Vec<ExpressionToken>>>,
+    pub value: Arc<RwLock<Vec<ExpressionToken>>>,
 }
 
 impl BaseToken for ArrayToken {
     fn inspect(&self) -> String {
-        let mut result = format!("Array({}) {{\n", self.value.lock().unwrap().len());
+        let mut result = format!("Array({}) {{\n", self.value.read().unwrap().len());
 
-        for token in self.value.lock().unwrap().iter() {
+        for token in self.value.read().unwrap().iter() {
             if let ExpressionToken::Value(value_token) = token {
                 result.push_str(&format!("{}\n", value_token.inspect()));
             }
@@ -90,7 +90,7 @@ impl BaseToken for ArrayToken {
     fn value(&self) -> String {
         let mut result = "[\n".to_string();
 
-        for token in self.value.lock().unwrap().iter() {
+        for token in self.value.read().unwrap().iter() {
             if let ExpressionToken::Value(value_token) = token {
                 result.push_str(&format!("{}\n", value_token.value()));
             }
@@ -100,37 +100,37 @@ impl BaseToken for ArrayToken {
     }
 
     fn truthy(&self) -> bool {
-        !self.value.lock().unwrap().is_empty()
+        !self.value.read().unwrap().is_empty()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct BufferToken {
     pub location: TokenLocation,
-    pub value: Arc<Mutex<Vec<u8>>>,
+    pub value: Arc<RwLock<Vec<u8>>>,
 }
 
 impl BaseToken for BufferToken {
     fn inspect(&self) -> String {
-        let mut result = format!("Buffer({}) {{ ", self.value.lock().unwrap().len());
+        let mut result = format!("Buffer({}) {{ ", self.value.read().unwrap().len());
 
-        for byte in self.value.lock().unwrap().iter().take(100) {
+        for byte in self.value.read().unwrap().iter().take(100) {
             result.push_str(&format!("{:02x} ", byte));
         }
 
-        if self.value.lock().unwrap().len() > 100 {
+        if self.value.read().unwrap().len() > 100 {
             result
-                .push_str(format!("... {} more ", self.value.lock().unwrap().len() - 100).as_str());
+                .push_str(format!("... {} more ", self.value.read().unwrap().len() - 100).as_str());
         }
 
         result + "}"
     }
 
     fn value(&self) -> String {
-        let length = self.value.lock().unwrap().len();
+        let length = self.value.read().unwrap().len();
 
         self.value
-            .lock()
+            .read()
             .unwrap()
             .iter()
             .fold(String::with_capacity(length * 3), |acc, byte| {
@@ -139,7 +139,7 @@ impl BaseToken for BufferToken {
     }
 
     fn truthy(&self) -> bool {
-        !self.value.lock().unwrap().is_empty()
+        !self.value.read().unwrap().is_empty()
     }
 }
 

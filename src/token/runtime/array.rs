@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, RwLock};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec![
@@ -45,7 +45,7 @@ pub fn run(
                         let value = runtime.extract_value(arg)?;
                         array
                             .value
-                            .lock()
+                            .write()
                             .unwrap()
                             .push(ExpressionToken::Value(value));
                     }
@@ -71,7 +71,7 @@ pub fn run(
                     let value =
                         array
                             .value
-                            .lock()
+                            .write()
                             .unwrap()
                             .pop()
                             .unwrap_or(ExpressionToken::Value(ValueToken::Null(NullToken {
@@ -96,7 +96,7 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             match value {
                 ValueToken::Array(array) => {
-                    let len = array.value.lock().unwrap().len();
+                    let len = array.value.read().unwrap().len();
 
                     Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                         location: Default::default(),
@@ -121,11 +121,11 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             match value {
                 ValueToken::Array(array) => {
-                    let value = array.value.lock().unwrap().clone();
+                    let value = array.value.read().unwrap().clone();
 
                     Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                         location: Default::default(),
-                        value: Arc::new(Mutex::new(value)),
+                        value: Arc::new(RwLock::new(value)),
                     })))
                 }
                 _ => {
@@ -151,7 +151,7 @@ pub fn run(
 
                 match value {
                     ValueToken::Array(array) => {
-                        result.extend(array.value.lock().unwrap().iter().cloned());
+                        result.extend(array.value.read().unwrap().iter().cloned());
                     }
                     _ => {
                         panic!(
@@ -164,7 +164,7 @@ pub fn run(
 
             Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                 location: Default::default(),
-                value: Arc::new(Mutex::new(result)),
+                value: Arc::new(RwLock::new(result)),
             })))
         }
         "array#contains" => {
@@ -179,7 +179,7 @@ pub fn run(
                 ValueToken::Array(array) => {
                     let target = runtime.extract_value(&args[1])?;
 
-                    let contains = array.value.lock().unwrap().iter().any(|item| {
+                    let contains = array.value.read().unwrap().iter().any(|item| {
                         let item = runtime.extract_value(item).unwrap();
                         item.value() == target.value()
                     });
@@ -210,7 +210,7 @@ pub fn run(
                         ValueToken::Number(number) => {
                             let index = number.value as usize;
                             let value =
-                                array.value.lock().unwrap().get(index).cloned().unwrap_or({
+                                array.value.read().unwrap().get(index).cloned().unwrap_or({
                                     ExpressionToken::Value(ValueToken::Null(NullToken {
                                         location: Default::default(),
                                     }))
@@ -301,7 +301,7 @@ pub fn run(
                     match index {
                         ValueToken::Number(number) => {
                             let index = number.value as usize;
-                            let mut arr = array.value.lock().unwrap();
+                            let mut arr = array.value.write().unwrap();
 
                             if index >= arr.len() {
                                 arr.resize(

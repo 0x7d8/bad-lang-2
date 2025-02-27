@@ -5,13 +5,13 @@ use crate::token::{
     runtime,
 };
 
-use std::sync::Arc;
-use std::{collections::HashMap, sync::Mutex};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 pub struct Runtime {
     tokens: Vec<Token>,
     call_stack: Vec<InsideToken>,
-    scopes: Vec<HashMap<String, Arc<Mutex<ExpressionToken>>>>,
+    scopes: Vec<HashMap<String, Arc<RwLock<ExpressionToken>>>>,
 }
 
 impl Runtime {
@@ -29,14 +29,14 @@ impl Runtime {
         }
     }
 
-    fn scope_set(&mut self, name: &str, value: Arc<Mutex<ExpressionToken>>) {
+    fn scope_set(&mut self, name: &str, value: Arc<RwLock<ExpressionToken>>) {
         self.scopes
             .last_mut()
             .unwrap()
             .insert(name.to_string(), value);
     }
 
-    fn scope_aggregate(&self) -> HashMap<String, Arc<Mutex<ExpressionToken>>> {
+    pub fn scope_aggregate(&self) -> HashMap<String, Arc<RwLock<ExpressionToken>>> {
         let mut aggregate = HashMap::new();
 
         for scope in self.scopes.iter().rev() {
@@ -71,7 +71,7 @@ impl Runtime {
 
                 self.scope_set(
                     &let_token.name,
-                    Arc::new(Mutex::new(ExpressionToken::Value(value))),
+                    Arc::new(RwLock::new(ExpressionToken::Value(value))),
                 );
             }
             Token::Loop(loop_token) => {
@@ -153,12 +153,12 @@ impl Runtime {
                 }
 
                 for variable in self.scope_aggregate().iter() {
-                    if variable.1.try_lock().is_err() {
+                    if variable.1.try_read().is_err() {
                         continue;
                     }
 
                     if let ValueToken::Function(fn_token) =
-                        self.extract_value(&*variable.1.lock().unwrap()).unwrap()
+                        self.extract_value(&*variable.1.read().unwrap()).unwrap()
                     {
                         if variable.0 == &call_token.name {
                             self.call_stack
@@ -171,7 +171,7 @@ impl Runtime {
 
                                     self.scope_set(
                                         arg,
-                                        Arc::new(Mutex::new(ExpressionToken::Value(extracted))),
+                                        Arc::new(RwLock::new(ExpressionToken::Value(extracted))),
                                     );
                                 }
                             }
@@ -202,7 +202,7 @@ impl Runtime {
 
                 for variable in self.scope_aggregate().iter() {
                     if variable.0 == &assign_token.name {
-                        *variable.1.lock().unwrap() = expr_value;
+                        *variable.1.write().unwrap() = expr_value;
                         break;
                     }
                 }
@@ -212,7 +212,7 @@ impl Runtime {
 
                 for variable in self.scope_aggregate().iter() {
                     if variable.0 == &assign_token.name {
-                        let mut var_ref = variable.1.lock().unwrap();
+                        let mut var_ref = variable.1.write().unwrap();
 
                         if let ExpressionToken::Value(ValueToken::Number(ref mut number_token)) =
                             *var_ref
@@ -252,7 +252,7 @@ impl Runtime {
             ExpressionToken::Let(LetToken { name, .. }) => {
                 for variable in self.scope_aggregate().iter() {
                     if variable.0 == name {
-                        return self.extract_value(&*variable.1.lock().unwrap());
+                        return self.extract_value(&*variable.1.read().unwrap());
                     }
                 }
 

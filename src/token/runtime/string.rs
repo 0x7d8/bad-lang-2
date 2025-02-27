@@ -1,11 +1,13 @@
 use crate::{
     runtime::Runtime,
     token::{
-        base::{ArrayToken, BaseToken, BooleanToken, NumberToken, StringToken, ValueToken}, logic::ExpressionToken, LINE
+        LINE,
+        base::{ArrayToken, BaseToken, BooleanToken, NumberToken, StringToken, ValueToken},
+        logic::ExpressionToken,
     },
 };
 
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, RwLock};
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec![
@@ -108,7 +110,7 @@ pub fn run(
 
             Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                 location: Default::default(),
-                value: Arc::new(Mutex::new(
+                value: Arc::new(RwLock::new(
                     value
                         .split(&separator)
                         .map(|s| {
@@ -281,9 +283,10 @@ pub fn run(
         }
         "string#starts_with" => {
             if args.len() != 2 {
-                panic!("string#starts_with requires 2 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!(
+                    "string#starts_with requires 2 arguments on line {}",
+                    unsafe { LINE }
+                );
             }
 
             let value = runtime.extract_value(&args[0])?;

@@ -34,8 +34,24 @@ pub fn run(
                         .map(|arg| runtime.extract_value(arg).unwrap())
                         .collect();
 
+                    let scope = runtime.scope_aggregate();
+
                     let thread = std::thread::spawn(move || {
                         let mut tokens = Vec::new();
+
+                        for variable in scope.iter() {
+                            let value = variable.1.read().unwrap();
+
+                            tokens.push(Token::Let(LetToken {
+                                name: variable.0.clone(),
+                                is_const: false,
+                                is_function: match &*value {
+                                    ExpressionToken::Value(ValueToken::Function(_)) => true,
+                                    _ => false,
+                                },
+                                value: Arc::clone(variable.1),
+                            }));
+                        }
 
                         tokens.push(Token::Let(LetToken {
                             name: "main".to_string(),

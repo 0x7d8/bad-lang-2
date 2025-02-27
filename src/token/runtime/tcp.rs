@@ -9,7 +9,7 @@ use crate::{
 
 use std::{
     io::{Read, Write},
-    sync::{Arc, LazyLock, Mutex},
+    sync::{Arc, LazyLock, Mutex, RwLock},
 };
 
 pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
@@ -163,7 +163,7 @@ pub fn run(
 
                 Some(ExpressionToken::Value(ValueToken::Buffer(BufferToken {
                     location: Default::default(),
-                    value: Arc::new(Mutex::new(result)),
+                    value: Arc::new(RwLock::new(result)),
                 })))
             } else {
                 panic!("tcp#read requires a TcpStream on line {}", unsafe { LINE });

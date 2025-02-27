@@ -490,7 +490,7 @@ impl Tokenizer {
 
             return Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                 location: self.location(),
-                value: Arc::new(Mutex::new(tokens)),
+                value: Arc::new(RwLock::new(tokens)),
             })));
         }
 
