@@ -1,9 +1,7 @@
 use crate::{
     runtime::Runtime,
     token::{
-        LINE,
-        base::{ArrayToken, BaseToken, NumberToken, StringToken, ValueToken},
-        logic::ExpressionToken,
+        base::{ArrayToken, BaseToken, BooleanToken, NumberToken, StringToken, ValueToken}, logic::ExpressionToken, LINE
     },
 };
 
@@ -19,6 +17,13 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
         "string#to_number",
         "string#replace",
         "string#replacen",
+        "string#index_of",
+        "string#slice",
+        "string#to_upper",
+        "string#to_lower",
+        "string#starts_with",
+        "string#ends_with",
+        "string#contains",
     ]
 });
 
@@ -194,6 +199,138 @@ pub fn run(
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
                 location: Default::default(),
                 value: value.replacen(&search, &replace, n),
+            })))
+        }
+        "string#index_of" => {
+            if args.len() != 2 {
+                panic!("string#index_of requires 2 arguments on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let search = runtime.extract_value(&args[1])?;
+
+            let value = value.value();
+            let search = search.value();
+
+            let index = value.find(&search).unwrap_or_else(|| value.len());
+
+            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
+                value: index as f64,
+            })))
+        }
+        "string#slice" => {
+            if args.len() != 3 {
+                panic!("string#slice requires 3 arguments on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let start = runtime.extract_value(&args[1])?;
+            let end = runtime.extract_value(&args[2])?;
+
+            let value = value.value();
+            match (start, end) {
+                (ValueToken::Number(start), ValueToken::Number(end)) => {
+                    let start = start.value as usize;
+                    let end = end.value as usize;
+
+                    Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                        location: Default::default(),
+                        value: value[start..end].to_string(),
+                    })))
+                }
+                _ => panic!(
+                    "string#slice requires 2 numbers as the last 2 arguments on line {}",
+                    unsafe { LINE }
+                ),
+            }
+        }
+        "string#to_upper" => {
+            if args.len() != 1 {
+                panic!("string#to_upper requires 1 argument on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let value = value.value();
+
+            Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                location: Default::default(),
+                value: value.to_uppercase(),
+            })))
+        }
+        "string#to_lower" => {
+            if args.len() != 1 {
+                panic!("string#to_lower requires 1 argument on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let value = value.value();
+
+            Some(ExpressionToken::Value(ValueToken::String(StringToken {
+                location: Default::default(),
+                value: value.to_lowercase(),
+            })))
+        }
+        "string#starts_with" => {
+            if args.len() != 2 {
+                panic!("string#starts_with requires 2 arguments on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let search = runtime.extract_value(&args[1])?;
+
+            let value = value.value();
+            let search = search.value();
+
+            Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: Default::default(),
+                value: value.starts_with(&search),
+            })))
+        }
+        "string#ends_with" => {
+            if args.len() != 2 {
+                panic!("string#ends_with requires 2 arguments on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let search = runtime.extract_value(&args[1])?;
+
+            let value = value.value();
+            let search = search.value();
+
+            Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: Default::default(),
+                value: value.ends_with(&search),
+            })))
+        }
+        "string#contains" => {
+            if args.len() != 2 {
+                panic!("string#contains requires 2 arguments on line {}", unsafe {
+                    LINE
+                });
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let search = runtime.extract_value(&args[1])?;
+
+            let value = value.value();
+            let search = search.value();
+
+            Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                location: Default::default(),
+                value: value.contains(&search),
             })))
         }
         _ => None,
