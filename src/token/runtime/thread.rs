@@ -35,22 +35,27 @@ pub fn run(
                         .collect();
 
                     let scope = runtime.scope_aggregate();
+                    let mut var_tokens = Vec::new();
+
+                    for variable in scope.iter() {
+                        let value = variable.1.read().unwrap();
+
+                        var_tokens.push(Token::Let(LetToken {
+                            name: variable.0.clone(),
+                            is_const: false,
+                            is_function: match runtime.extract_value(&value).unwrap() {
+                                ValueToken::Function(_) => true,
+                                _ => false,
+                            },
+                            value: Arc::clone(variable.1),
+                        }));
+                    }
 
                     let thread = std::thread::spawn(move || {
                         let mut tokens = Vec::new();
 
-                        for variable in scope.iter() {
-                            let value = variable.1.read().unwrap();
-
-                            tokens.push(Token::Let(LetToken {
-                                name: variable.0.clone(),
-                                is_const: false,
-                                is_function: match &*value {
-                                    ExpressionToken::Value(ValueToken::Function(_)) => true,
-                                    _ => false,
-                                },
-                                value: Arc::clone(variable.1),
-                            }));
+                        for variable in var_tokens {
+                            tokens.push(variable);
                         }
 
                         tokens.push(Token::Let(LetToken {
