@@ -478,7 +478,12 @@ impl Tokenizer {
         if segment.starts_with("\"") && segment.ends_with("\"") {
             return Some(ExpressionToken::Value(ValueToken::String(StringToken {
                 location: self.location(),
-                value: segment[1..segment.len() - 1].to_string(),
+                value: segment[1..segment.len() - 1]
+                    .to_string()
+                    .replace("\\n", "\n")
+                    .replace("\\r", "\r")
+                    .replace("\\t", "\t")
+                    .replace("\\\\", "\\"),
             })));
         } else if segment.starts_with("[") && segment.ends_with("]") {
             let tokens = self.parse_args(&segment[1..segment.len() - 1]);
