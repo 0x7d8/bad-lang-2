@@ -192,7 +192,7 @@ pub struct FunctionToken {
 impl BaseToken for FunctionToken {
     fn inspect(&self) -> String {
         format!(
-            "Function({}, {}) {{ <{} tokens> }}",
+            "Function({}: {}) {{ <{} tokens> }}",
             self.name,
             self.args.join(", "),
             self.body.read().unwrap().len()

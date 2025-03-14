@@ -1,0 +1,54 @@
+// Calculate Pi using the Nilakantha series
+// Pi = 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) - 4/(8*9*10) + ...
+
+fn calc_pi(max_iterations) {
+  // Initialize variables
+  let pi = 3.0
+  let sign = 1
+  let i = 2
+  let count = 0
+  
+  // Iterate to calculate Pi
+  loop {
+    // Exit if we've reached the maximum iterations
+    if (#gt(count, max_iterations)) {
+      break
+    }
+    
+    // Calculate the denominator
+    let denom = #=("{} * ({} + 1) * ({} + 2)", i, i, i)
+    
+    // Calculate term
+    let term = #=("4.0 / {}", denom)
+    
+    // Apply term with the current sign
+    let signed_term = #=("{} * {}", sign, term)
+    pi += signed_term
+    
+    // Update sign for next iteration (alternate between 1 and -1)
+    sign *= -1
+    
+    // Increment values for next iteration
+    i += 2
+    count++
+  }
+  
+  return pi
+}
+
+io#println("Calculating Pi using Nilakantha series...")
+io#println("This method converges faster than the Gregory-Leibniz series")
+
+// Use more iterations for better precision
+let iterations = 10000
+io#println("Using iterations:")
+io#println(iterations)
+
+let pi = calc_pi(iterations)
+
+io#println("Pi = ")
+io#println(pi)
+
+// Actual value for reference
+io#println("Actual Pi is approximately 3.1415926535897932384626433...")
+io#println("Note: Output limited by floating point precision")
