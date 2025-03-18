@@ -10,8 +10,9 @@ pub trait BaseToken {
 
 #[derive(Debug, Clone)]
 pub struct StringToken {
-    pub location: TokenLocation,
     pub value: String,
+
+    pub location: TokenLocation,
 }
 
 impl BaseToken for StringToken {
@@ -30,8 +31,9 @@ impl BaseToken for StringToken {
 
 #[derive(Debug, Clone)]
 pub struct NumberToken {
-    pub location: TokenLocation,
     pub value: f64,
+
+    pub location: TokenLocation,
 }
 
 impl BaseToken for NumberToken {
@@ -50,8 +52,9 @@ impl BaseToken for NumberToken {
 
 #[derive(Debug, Clone)]
 pub struct BooleanToken {
-    pub location: TokenLocation,
     pub value: bool,
+
+    pub location: TokenLocation,
 }
 
 impl BaseToken for BooleanToken {
@@ -70,8 +73,9 @@ impl BaseToken for BooleanToken {
 
 #[derive(Debug, Clone)]
 pub struct ArrayToken {
-    pub location: TokenLocation,
     pub value: Arc<RwLock<Vec<ExpressionToken>>>,
+
+    pub location: TokenLocation,
 }
 
 impl BaseToken for ArrayToken {
@@ -106,8 +110,9 @@ impl BaseToken for ArrayToken {
 
 #[derive(Debug, Clone)]
 pub struct BufferToken {
-    pub location: TokenLocation,
     pub value: Arc<RwLock<Vec<u8>>>,
+
+    pub location: TokenLocation,
 }
 
 impl BaseToken for BufferToken {
@@ -187,6 +192,8 @@ pub struct FunctionToken {
     pub name: String,
     pub args: Vec<String>,
     pub body: Arc<RwLock<Vec<Token>>>,
+
+    pub location: TokenLocation,
 }
 
 impl BaseToken for FunctionToken {
@@ -257,6 +264,21 @@ impl BaseToken for ValueToken {
             ValueToken::Buffer(buffer_token) => buffer_token.truthy(),
             ValueToken::NativeMemory(native_memory_token) => native_memory_token.truthy(),
             ValueToken::Function(function_token) => function_token.truthy(),
+        }
+    }
+}
+
+impl ValueToken {
+    pub fn location(&self) -> TokenLocation {
+        match self {
+            ValueToken::String(token) => token.location.clone(),
+            ValueToken::Number(token) => token.location.clone(),
+            ValueToken::Boolean(token) => token.location.clone(),
+            ValueToken::Null(token) => token.location.clone(),
+            ValueToken::Array(token) => token.location.clone(),
+            ValueToken::Buffer(token) => token.location.clone(),
+            ValueToken::NativeMemory(_) => TokenLocation::default(),
+            ValueToken::Function(token) => token.location.clone(),
         }
     }
 }

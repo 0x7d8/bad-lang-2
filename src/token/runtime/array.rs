@@ -1,7 +1,7 @@
 use crate::{
     runtime::Runtime,
     token::{
-        LINE,
+        TokenLocation,
         base::{
             ArrayToken, BaseToken, BooleanToken, NullToken, NumberToken, StringToken, ValueToken,
         },
@@ -28,14 +28,12 @@ pub fn run(
     name: &str,
     args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
+    location: &TokenLocation,
 ) -> Option<ExpressionToken> {
     match name {
         "array#push" => {
             if args.len() < 2 {
-                panic!(
-                    "array#push requires at least 2 arguments on line {}",
-                    unsafe { LINE }
-                );
+                panic!("array#push requires at least 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -54,15 +52,15 @@ pub fn run(
                 }
                 _ => {
                     panic!(
-                        "array#push requires an array as the first argument on line {}",
-                        unsafe { LINE }
+                        "array#push requires an array as the first argument in {}",
+                        location
                     );
                 }
             }
         }
         "array#pop" => {
             if args.len() != 1 {
-                panic!("array#pop requires 1 argument on line {}", unsafe { LINE });
+                panic!("array#pop requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -82,15 +80,15 @@ pub fn run(
                 }
                 _ => {
                     panic!(
-                        "array#pop requires an array as the first argument on line {}",
-                        unsafe { LINE }
+                        "array#pop requires an array as the first argument in {}",
+                        location
                     );
                 }
             }
         }
         "array#len" => {
             if args.len() != 1 {
-                panic!("array#len requires 1 argument on line {}", unsafe { LINE });
+                panic!("array#len requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -105,17 +103,15 @@ pub fn run(
                 }
                 _ => {
                     panic!(
-                        "array#len requires an array as the first argument on line {}",
-                        unsafe { LINE }
+                        "array#len requires an array as the first argument in {}",
+                        location
                     );
                 }
             }
         }
         "array#clone" => {
             if args.len() != 1 {
-                panic!("array#clone requires 1 argument on line {}", unsafe {
-                    LINE
-                });
+                panic!("array#clone requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -130,18 +126,15 @@ pub fn run(
                 }
                 _ => {
                     panic!(
-                        "array#clone requires an array as the first argument on line {}",
-                        unsafe { LINE }
+                        "array#clone requires an array as the first argument in {}",
+                        location
                     );
                 }
             }
         }
         "array#concat" => {
             if args.len() < 2 {
-                panic!(
-                    "array#concat requires at least 2 arguments on line {}",
-                    unsafe { LINE }
-                );
+                panic!("array#concat requires at least 2 arguments in {}", location);
             }
 
             let mut result = Vec::new();
@@ -155,8 +148,8 @@ pub fn run(
                     }
                     _ => {
                         panic!(
-                            "array#concat requires an array as each argument on line {}",
-                            unsafe { LINE }
+                            "array#concat requires an array as each argument in {}",
+                            location
                         );
                     }
                 }
@@ -169,9 +162,7 @@ pub fn run(
         }
         "array#contains" => {
             if args.len() != 2 {
-                panic!("array#contains requires 2 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("array#contains requires 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -191,15 +182,15 @@ pub fn run(
                 }
                 _ => {
                     panic!(
-                        "array#contains requires an array as the first argument on line {}",
-                        unsafe { LINE }
+                        "array#contains requires an array as the first argument in {}",
+                        location
                     );
                 }
             }
         }
         "array#get" => {
             if args.len() != 2 {
-                panic!("array#get requires 2 arguments on line {}", unsafe { LINE });
+                panic!("array#get requires 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -220,8 +211,8 @@ pub fn run(
                         }
                         _ => {
                             panic!(
-                                "array#get requires a number as the second argument on line {}",
-                                unsafe { LINE }
+                                "array#get requires a number as the second argument in {}",
+                                location
                             );
                         }
                     }
@@ -251,8 +242,8 @@ pub fn run(
                         }
                         _ => {
                             panic!(
-                                "array#get requires a number as the second argument on line {}",
-                                unsafe { LINE }
+                                "array#get requires a number as the second argument in {}",
+                                location
                             );
                         }
                     }
@@ -273,23 +264,23 @@ pub fn run(
                         }
                         _ => {
                             panic!(
-                                "array#get requires a number as the second argument on line {}",
-                                unsafe { LINE }
+                                "array#get requires a number as the second argument in {}",
+                                location
                             );
                         }
                     }
                 }
                 _ => {
                     panic!(
-                        "array#get requires an array, string or number as the first argument on line {}",
-                        unsafe { LINE }
+                        "array#get requires an array, string or number as the first argument in {}",
+                        location
                     );
                 }
             }
         }
         "array#set" => {
             if args.len() != 3 {
-                panic!("array#set requires 3 arguments on line {}", unsafe { LINE });
+                panic!("array#set requires 3 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -318,8 +309,8 @@ pub fn run(
                         }
                         _ => {
                             panic!(
-                                "array#set requires a number as the second argument on line {}",
-                                unsafe { LINE }
+                                "array#set requires a number as the second argument in {}",
+                                location
                             );
                         }
                     }
@@ -343,8 +334,8 @@ pub fn run(
                                 }
                                 _ => {
                                     panic!(
-                                        "array#set requires a boolean as the third argument on line {}",
-                                        unsafe { LINE }
+                                        "array#set requires a boolean as the third argument in {}",
+                                        location
                                     );
                                 }
                             };
@@ -359,16 +350,16 @@ pub fn run(
                         }
                         _ => {
                             panic!(
-                                "array#set requires a number as the second argument on line {}",
-                                unsafe { LINE }
+                                "array#set requires a number as the second argument in {}",
+                                location
                             );
                         }
                     }
                 }
                 _ => {
                     panic!(
-                        "array#set requires an array as the first argument on line {}",
-                        unsafe { LINE }
+                        "array#set requires an array as the first argument in {}",
+                        location
                     );
                 }
             }

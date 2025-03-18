@@ -1,6 +1,6 @@
 use crate::token::{
     InsideToken, Token,
-    base::{BaseToken, NullToken, ValueToken},
+    base::{BaseToken, NullToken, NumberToken, ValueToken},
     logic::{ExpressionToken, LetToken, NumOperation, ReturnToken},
     runtime,
 };
@@ -92,18 +92,6 @@ impl Runtime {
         }
 
         self.modified_vars.borrow_mut().clear();
-    }
-
-    pub fn scope_aggregate_iter(&self) -> Vec<(String, Arc<RwLock<ExpressionToken>>)> {
-        let mut result = Vec::new();
-
-        for scope in self.scopes.iter().rev() {
-            for (name, value) in scope.iter() {
-                result.push((name.clone(), Arc::clone(value)));
-            }
-        }
-
-        result
     }
 
     fn scope_create(&mut self) {
@@ -211,7 +199,12 @@ impl Runtime {
             }
             Token::FnCall(call_token) => {
                 if runtime::FUNCTIONS.contains(&call_token.name.as_str()) {
-                    let result = runtime::run(call_token.name.as_str(), &call_token.args, self);
+                    let result = runtime::run(
+                        call_token.name.as_str(),
+                        &call_token.args,
+                        self,
+                        &call_token.location,
+                    );
 
                     return result;
                 }
@@ -226,7 +219,7 @@ impl Runtime {
                     }
 
                     if let ValueToken::Function(fn_token) =
-                        self.extract_value(&*fn_var.read().unwrap()).unwrap()
+                        self.extract_value(&fn_var.read().unwrap()).unwrap()
                     {
                         self.call_stack
                             .push(InsideToken::Function(fn_token.clone()));
@@ -234,7 +227,7 @@ impl Runtime {
 
                         for (index, arg) in fn_token.args.iter().enumerate() {
                             if let Some(arg_expr) = call_token.args.get(index) {
-                                let extracted = self.extract_value(&arg_expr).unwrap();
+                                let extracted = self.extract_value(arg_expr).unwrap();
 
                                 self.scope_set(
                                     arg,
@@ -325,11 +318,34 @@ impl Runtime {
             ExpressionToken::Let(LetToken { name, .. }) => {
                 if let Some(var) = self.lookup_variable(name) {
                     if let Ok(guard) = var.read() {
-                        return self.extract_value(&*guard);
+                        return self.extract_value(&guard);
                     }
                 }
 
                 None
+            }
+            ExpressionToken::Math(expression) => {
+                let mut context = meval::Context::empty();
+
+                for (name, value) in self.scope_aggregate() {
+                    if let Ok(guard) = value.read() {
+                        if let ValueToken::Number(number_token) =
+                            self.extract_value(&guard).unwrap()
+                        {
+                            context.var(name, number_token.value);
+                        }
+                    }
+                }
+
+                let result = expression.eval_with_context(&context);
+                if let Ok(value) = result {
+                    Some(ValueToken::Number(NumberToken {
+                        location: Default::default(),
+                        value,
+                    }))
+                } else {
+                    None
+                }
             }
             ExpressionToken::FnCall(value) => {
                 let value_clone = value.clone();

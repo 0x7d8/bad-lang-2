@@ -12,17 +12,29 @@ use logic::{
 };
 use std::{
     collections::HashMap,
+    fmt::Display,
+    str::FromStr,
     sync::{Arc, Mutex, RwLock},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct TokenLocation {
+    pub file: String,
     pub line: usize,
 }
 
 impl Default for TokenLocation {
     fn default() -> Self {
-        Self { line: usize::MAX }
+        Self {
+            file: "<internal>".to_string(),
+            line: 1,
+        }
+    }
+}
+
+impl Display for TokenLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.file, self.line)
     }
 }
 
@@ -44,10 +56,10 @@ pub enum InsideToken {
     If(IfToken),
 }
 
-pub static mut LINE: usize = 0;
-
 type MacroFn = fn(Vec<ExpressionToken>) -> Option<ExpressionToken>;
 pub struct Tokenizer {
+    location: TokenLocation,
+
     input: String,
     default_macros: HashMap<String, MacroFn>,
 
@@ -56,8 +68,13 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn new(input: &str) -> Self {
+    pub fn new(input: &str, file: &str) -> Self {
         Self {
+            location: TokenLocation {
+                file: file.to_string(),
+                line: 0,
+            },
+
             input: input.to_string(),
             default_macros: HashMap::from([
                 ("concat!".to_string(), macros::concat as MacroFn),
@@ -74,9 +91,7 @@ impl Tokenizer {
         self.tokens.clear();
 
         for line in self.input.clone().lines() {
-            unsafe {
-                LINE += 1;
-            }
+            self.location.line += 1;
 
             let token = self.tokenize(line);
             if let Some(token) = token {
@@ -147,11 +162,10 @@ impl Tokenizer {
             }
             Token::Let(let_token) => {
                 if let_token.is_function {
-                    match &*let_token.value.read().unwrap() {
-                        ExpressionToken::Value(ValueToken::Function(fn_token)) => {
-                            return Some(InsideToken::Function(fn_token.clone()));
-                        }
-                        _ => {}
+                    if let ExpressionToken::Value(ValueToken::Function(fn_token)) =
+                        &*let_token.value.read().unwrap()
+                    {
+                        return Some(InsideToken::Function(fn_token.clone()));
                     }
                 }
             }
@@ -200,7 +214,7 @@ impl Tokenizer {
                 self.inside.pop().unwrap();
                 return None;
             } else {
-                panic!("unexpected '}}' at line {}", unsafe { LINE });
+                panic!("unexpected '}}' in {}", self.location);
             }
         }
 
@@ -221,9 +235,7 @@ impl Tokenizer {
             }
 
             if value.is_none() {
-                panic!("unexpected value at line {} (did you typo?)", unsafe {
-                    LINE
-                });
+                panic!("unexpected value in {} (did you typo?)", self.location);
             }
 
             return Some(Token::Let(LetToken {
@@ -231,6 +243,7 @@ impl Tokenizer {
                 is_const: parts[1] == "const",
                 is_function: false,
                 value: Arc::new(RwLock::new(value.unwrap())),
+                location: self.location(),
             }));
         } else if segment.starts_with("fn") {
             let parts: Vec<&str> = segment.split("(").collect();
@@ -260,6 +273,7 @@ impl Tokenizer {
                             location: self.location(),
                         },
                     )))),
+                    location: self.location(),
                 }));
             }
 
@@ -269,6 +283,8 @@ impl Tokenizer {
                 name: name.clone(),
                 args: args.clone(),
                 body: Arc::clone(&body),
+
+                location: self.location(),
             });
 
             let token = Token::Let(LetToken {
@@ -276,6 +292,7 @@ impl Tokenizer {
                 is_const: true,
                 is_function: true,
                 value: Arc::new(RwLock::new(ExpressionToken::Value(value))),
+                location: self.location(),
             });
 
             self.push_token(token);
@@ -284,6 +301,8 @@ impl Tokenizer {
                     name,
                     args,
                     body,
+
+                    location: self.location(),
                 }))));
 
             return None;
@@ -309,9 +328,7 @@ impl Tokenizer {
 
             let value = self.parse_expression(segment[6..].trim());
             if value.is_none() {
-                panic!("unexpected value at line {} (did you typo?)", unsafe {
-                    LINE
-                });
+                panic!("unexpected value in {} (did you typo?)", self.location);
             }
 
             return Some(Token::Return(ReturnToken {
@@ -329,9 +346,7 @@ impl Tokenizer {
             }
 
             let condition = Arc::new(condition.unwrap_or_else(|| {
-                panic!("unexpected condition at line {} (did you typo?)", unsafe {
-                    LINE
-                })
+                panic!("unexpected condition in {} (did you typo?)", self.location)
             }));
 
             let body = Arc::new(RwLock::new(Vec::new()));
@@ -339,6 +354,7 @@ impl Tokenizer {
                 reversed,
                 condition: Arc::clone(&condition),
                 body: Arc::clone(&body),
+                location: self.location(),
             });
 
             self.push_token(token);
@@ -347,6 +363,7 @@ impl Tokenizer {
                     reversed,
                     condition,
                     body,
+                    location: self.location(),
                 }))));
 
             return None;
@@ -361,6 +378,7 @@ impl Tokenizer {
                 return Some(Token::FnCall(FnCallToken {
                     name: func.to_string(),
                     args: tokens.into_iter().map(Arc::new).collect(),
+                    location: self.location(),
                 }));
             }
         }
@@ -374,6 +392,7 @@ impl Tokenizer {
                     return Some(Token::FnCall(FnCallToken {
                         name: let_token.name.clone(),
                         args: tokens.into_iter().map(Arc::new).collect(),
+                        location: self.location(),
                     }));
                 }
 
@@ -384,9 +403,7 @@ impl Tokenizer {
                 if segment.starts_with(&format!("{} = ", let_token.name)) {
                     let value = self.parse_expression(segment[let_token.name.len() + 3..].trim());
                     if value.is_none() {
-                        panic!("unexpected value at line {} (did you typo?)", unsafe {
-                            LINE
-                        });
+                        panic!("unexpected value in {} (did you typo?)", self.location);
                     }
 
                     return Some(Token::LetAssign(LetAssignToken {
@@ -398,9 +415,7 @@ impl Tokenizer {
                 if segment.starts_with(&format!("{} += ", let_token.name)) {
                     let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
                     if value.is_none() {
-                        panic!("unexpected value at line {} (did you typo?)", unsafe {
-                            LINE
-                        });
+                        panic!("unexpected value in {} (did you typo?)", self.location);
                     }
 
                     return Some(Token::LetAssignNum(LetAssignNumToken {
@@ -413,16 +428,14 @@ impl Tokenizer {
                         name: let_token.name.clone(),
                         operation: logic::NumOperation::Add,
                         value: Arc::new(ExpressionToken::Value(ValueToken::Number(NumberToken {
-                            location: self.location(),
                             value: 1.0,
+                            location: self.location(),
                         }))),
                     }));
                 } else if segment.starts_with(&format!("{} -= ", let_token.name)) {
                     let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
                     if value.is_none() {
-                        panic!("unexpected value at line {} (did you typo?)", unsafe {
-                            LINE
-                        });
+                        panic!("unexpected value in {} (did you typo?)", self.location);
                     }
 
                     return Some(Token::LetAssignNum(LetAssignNumToken {
@@ -435,16 +448,14 @@ impl Tokenizer {
                         name: let_token.name.clone(),
                         operation: logic::NumOperation::Sub,
                         value: Arc::new(ExpressionToken::Value(ValueToken::Number(NumberToken {
-                            location: self.location(),
                             value: 1.0,
+                            location: self.location(),
                         }))),
                     }));
                 } else if segment.starts_with(&format!("{} *= ", let_token.name)) {
                     let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
                     if value.is_none() {
-                        panic!("unexpected value at line {} (did you typo?)", unsafe {
-                            LINE
-                        });
+                        panic!("unexpected value in {} (did you typo?)", self.location);
                     }
 
                     return Some(Token::LetAssignNum(LetAssignNumToken {
@@ -455,9 +466,7 @@ impl Tokenizer {
                 } else if segment.starts_with(&format!("{} /= ", let_token.name)) {
                     let value = self.parse_expression(segment[let_token.name.len() + 4..].trim());
                     if value.is_none() {
-                        panic!("unexpected value at line {} (did you typo?)", unsafe {
-                            LINE
-                        });
+                        panic!("unexpected value in {} (did you typo?)", self.location);
                     }
 
                     return Some(Token::LetAssignNum(LetAssignNumToken {
@@ -469,21 +478,19 @@ impl Tokenizer {
             }
         }
 
-        panic!("unexpected token at line {} (did you typo?)", unsafe {
-            LINE
-        });
+        panic!("unexpected token in {} (did you typo?)", self.location);
     }
 
     pub fn parse_expression(&self, segment: &str) -> Option<ExpressionToken> {
         if segment.starts_with("\"") && segment.ends_with("\"") {
             return Some(ExpressionToken::Value(ValueToken::String(StringToken {
-                location: self.location(),
                 value: segment[1..segment.len() - 1]
                     .to_string()
                     .replace("\\n", "\n")
                     .replace("\\r", "\r")
                     .replace("\\t", "\t")
                     .replace("\\\\", "\\"),
+                location: self.location(),
             })));
         } else if segment.starts_with("[") && segment.ends_with("]") {
             let tokens = self.parse_args(&segment[1..segment.len() - 1]);
@@ -532,6 +539,7 @@ impl Tokenizer {
                 return Some(ExpressionToken::FnCall(FnCallToken {
                     name: func.to_string(),
                     args: tokens.into_iter().map(Arc::new).collect(),
+                    location: self.location(),
                 }));
             }
         }
@@ -553,6 +561,7 @@ impl Tokenizer {
                     return Some(ExpressionToken::FnCall(FnCallToken {
                         name: let_token.name.clone(),
                         args: tokens.into_iter().map(Arc::new).collect(),
+                        location: self.location(),
                     }));
                 }
 
@@ -560,19 +569,32 @@ impl Tokenizer {
                     return Some(ExpressionToken::Let(LetToken {
                         name: let_token.name.clone(),
                         is_const: let_token.is_const,
-                        is_function: match &*let_token.value.read().unwrap() {
-                            ExpressionToken::Value(ValueToken::Function(_)) => true,
-                            _ => false,
-                        },
+                        is_function: matches!(
+                            &*let_token.value.read().unwrap(),
+                            ExpressionToken::Value(ValueToken::Function(_))
+                        ),
                         value: Arc::clone(&let_token.value),
+                        location: self.location(),
                     }));
                 }
             }
         }
 
-        panic!("unexpected expression at line {} (did you typo?)", unsafe {
-            LINE
-        });
+        {
+            let mut context = meval::Context::empty();
+
+            for token in self.current_tokens_context().iter().rev() {
+                if let Token::Let(let_token) = token {
+                    context.var(&let_token.name, 0.0);
+                }
+            }
+
+            if let Ok(expression) = meval::Expr::from_str(segment) {
+                return Some(ExpressionToken::Math(expression));
+            }
+        }
+
+        panic!("unexpected expression in {} (did you typo?)", self.location);
     }
 
     pub fn parse_args(&self, segment: &str) -> Vec<ExpressionToken> {
@@ -618,8 +640,6 @@ impl Tokenizer {
     }
 
     fn location(&self) -> TokenLocation {
-        TokenLocation {
-            line: unsafe { LINE },
-        }
+        self.location.clone()
     }
 }

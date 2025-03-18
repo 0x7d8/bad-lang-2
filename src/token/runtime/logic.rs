@@ -1,7 +1,7 @@
 use crate::{
     runtime::Runtime,
-    token::LINE,
     token::{
+        TokenLocation,
         base::{BaseToken, BooleanToken, ValueToken},
         logic::ExpressionToken,
     },
@@ -16,11 +16,12 @@ pub fn run(
     name: &str,
     args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
+    location: &TokenLocation,
 ) -> Option<ExpressionToken> {
     match name {
         "#eq" => {
             if args.len() != 2 {
-                panic!("#eq requires 2 arguments on line {}", unsafe { LINE });
+                panic!("#eq requires 2 arguments on line {}", location);
             }
 
             let left = runtime.extract_value(&args[0])?;
@@ -33,7 +34,7 @@ pub fn run(
         }
         "#lt" => {
             if args.len() != 2 {
-                panic!("#lt requires 2 arguments on line {}", unsafe { LINE });
+                panic!("#lt requires 2 arguments on line {}", location);
             }
 
             let left = runtime.extract_value(&args[0])?;
@@ -47,13 +48,13 @@ pub fn run(
                     })))
                 }
                 _ => {
-                    panic!("#lt requires 2 numbers on line {}", unsafe { LINE });
+                    panic!("#lt requires 2 numbers on line {}", location);
                 }
             }
         }
         "#gt" => {
             if args.len() != 2 {
-                panic!("#gt requires 2 arguments on line {}", unsafe { LINE });
+                panic!("#gt requires 2 arguments on line {}", location);
             }
 
             let left = runtime.extract_value(&args[0])?;
@@ -67,13 +68,13 @@ pub fn run(
                     })))
                 }
                 _ => {
-                    panic!("#gt requires 2 numbers on line {}", unsafe { LINE });
+                    panic!("#gt requires 2 numbers on line {}", location);
                 }
             }
         }
         "#and" => {
             if args.len() < 2 {
-                panic!("#and requires 2 arguments on line {}", unsafe { LINE });
+                panic!("#and requires 2 arguments on line {}", location);
             }
 
             for arg in args {
@@ -94,7 +95,7 @@ pub fn run(
         }
         "#or" => {
             if args.len() < 2 {
-                panic!("#or requires 2 arguments on line {}", unsafe { LINE });
+                panic!("#or requires 2 arguments on line {}", location);
             }
 
             for arg in args {

@@ -1,7 +1,7 @@
 use crate::{
     runtime::Runtime,
-    token::LINE,
     token::{
+        TokenLocation,
         base::{BaseToken, NumberToken, ValueToken},
         logic::ExpressionToken,
     },
@@ -18,11 +18,12 @@ pub fn run(
     name: &str,
     args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
+    location: &TokenLocation,
 ) -> Option<ExpressionToken> {
     match name {
         "math#eval" => {
             if args.len() != 1 {
-                panic!("math#eval requires 1 argument on line {}", unsafe { LINE });
+                panic!("math#eval requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -37,12 +38,12 @@ pub fn run(
         "#=" => {
             if args.is_empty() {
                 panic!(
-                    "#= (math#eval) requires at least 1 argument on line {}",
-                    unsafe { LINE }
+                    "#= (math#eval) requires at least 1 argument in {}",
+                    location
                 );
             }
 
-            let expression = string::run("string#format", args, runtime)?;
+            let expression = string::run("string#format", args, runtime, location)?;
             let result = meval::eval_str(runtime.extract_value(&expression)?.value()).unwrap();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
@@ -52,13 +53,13 @@ pub fn run(
         }
         "math#floor" => {
             if args.len() != 1 {
-                panic!("math#floor requires 1 argument on line {}", unsafe { LINE });
+                panic!("math#floor requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
             let value = match value {
                 ValueToken::Number(value) => value.value,
-                _ => panic!("math#floor requires a number on line {}", unsafe { LINE }),
+                _ => panic!("math#floor requires a number in {}", location),
             };
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
@@ -68,13 +69,13 @@ pub fn run(
         }
         "math#ceil" => {
             if args.len() != 1 {
-                panic!("math#ceil requires 1 argument on line {}", unsafe { LINE });
+                panic!("math#ceil requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
             let value = match value {
                 ValueToken::Number(value) => value.value,
-                _ => panic!("math#ceil requires a number on line {}", unsafe { LINE }),
+                _ => panic!("math#ceil requires a number in {}", location),
             };
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
@@ -84,13 +85,13 @@ pub fn run(
         }
         "math#round" => {
             if args.len() != 1 {
-                panic!("math#round requires 1 argument on line {}", unsafe { LINE });
+                panic!("math#round requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
             let value = match value {
                 ValueToken::Number(value) => value.value,
-                _ => panic!("math#round requires a number on line {}", unsafe { LINE }),
+                _ => panic!("math#round requires a number in {}", location),
             };
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {

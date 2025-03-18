@@ -1,7 +1,7 @@
 use crate::{
     runtime::Runtime,
     token::{
-        LINE,
+        TokenLocation,
         base::{BaseToken, BufferToken, StringToken, ValueToken},
         logic::ExpressionToken,
     },
@@ -18,11 +18,12 @@ pub fn run(
     name: &str,
     args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
+    location: &TokenLocation,
 ) -> Option<ExpressionToken> {
     match name {
         "fs#readstr" => {
             if args.len() != 1 {
-                panic!("fs#readstr requires 1 argument on line {}", unsafe { LINE });
+                panic!("fs#readstr requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -36,7 +37,7 @@ pub fn run(
         }
         "fs#readbin" => {
             if args.len() != 1 {
-                panic!("fs#readbin requires 1 argument on line {}", unsafe { LINE });
+                panic!("fs#readbin requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;

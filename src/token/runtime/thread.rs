@@ -1,7 +1,7 @@
 use crate::{
     runtime::Runtime,
     token::{
-        LINE, Token,
+        Token, TokenLocation,
         base::{NativeMemoryToken, NullToken, ValueToken},
         logic::{ExpressionToken, FnCallToken, LetToken},
     },
@@ -15,14 +15,12 @@ pub fn run(
     name: &str,
     args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
+    location: &TokenLocation,
 ) -> Option<ExpressionToken> {
     match name {
         "thread#launch" => {
             if args.is_empty() {
-                panic!(
-                    "thread#launch requires at least 1 argument on line {}",
-                    unsafe { LINE }
-                );
+                panic!("thread#launch requires at least 1 argument in {}", location);
             }
 
             let function = runtime.extract_value(&args[0])?;
@@ -43,11 +41,12 @@ pub fn run(
                         var_tokens.push(Token::Let(LetToken {
                             name: variable.0.clone(),
                             is_const: false,
-                            is_function: match runtime.extract_value(&value).unwrap() {
-                                ValueToken::Function(_) => true,
-                                _ => false,
-                            },
+                            is_function: matches!(
+                                runtime.extract_value(&value).unwrap(),
+                                ValueToken::Function(_)
+                            ),
                             value: Arc::clone(variable.1),
+                            location: Default::default(),
                         }));
                     }
 
@@ -65,6 +64,7 @@ pub fn run(
                             value: Arc::new(RwLock::new(ExpressionToken::Value(
                                 ValueToken::Function(function),
                             ))),
+                            location: Default::default(),
                         }));
 
                         tokens.push(Token::FnCall(FnCallToken {
@@ -73,6 +73,7 @@ pub fn run(
                                 .iter()
                                 .map(|arg| Arc::new(ExpressionToken::Value(arg.clone())))
                                 .collect(),
+                            location: Default::default(),
                         }));
 
                         let mut runtime = Runtime::new(tokens);
@@ -87,17 +88,13 @@ pub fn run(
                     )))
                 }
                 _ => {
-                    panic!("thread#launch requires a function on line {}", unsafe {
-                        LINE
-                    });
+                    panic!("thread#launch requires a function in {}", location);
                 }
             }
         }
         "thread#join" => {
             if args.len() != 1 {
-                panic!("thread#join requires 1 argument on line {}", unsafe {
-                    LINE
-                });
+                panic!("thread#join requires 1 argument in {}", location);
             }
 
             let thread = runtime.extract_value(&args[0]);
@@ -118,7 +115,7 @@ pub fn run(
                     location: Default::default(),
                 })))
             } else {
-                panic!("thread#kill requires a Thread on line {}", unsafe { LINE });
+                panic!("thread#kill requires a Thread in {}", location);
             }
         }
         _ => None,

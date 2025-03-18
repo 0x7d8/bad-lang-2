@@ -76,31 +76,31 @@ pub fn inline(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
     match &args[0] {
         ExpressionToken::Value(ValueToken::String(StringToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
-                location: *location,
                 value: value.clone(),
+                location: location.clone(),
             })))
         }
         ExpressionToken::Value(ValueToken::Number(NumberToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
-                location: *location,
                 value: *value,
+                location: location.clone(),
             })))
         }
         ExpressionToken::Value(ValueToken::Boolean(BooleanToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
-                location: *location,
                 value: *value,
+                location: location.clone(),
             })))
         }
         ExpressionToken::Value(ValueToken::Array(ArrayToken { value, location })) => {
             Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
-                location: *location,
                 value: value.clone(),
+                location: location.clone(),
             })))
         }
         ExpressionToken::Value(ValueToken::Null(NullToken { location })) => {
             Some(ExpressionToken::Value(ValueToken::Null(NullToken {
-                location: *location,
+                location: location.clone(),
             })))
         }
         ExpressionToken::Let(LetToken {
@@ -113,31 +113,31 @@ pub fn inline(args: Vec<ExpressionToken>) -> Option<ExpressionToken> {
             match &*value.as_ref().read().unwrap() {
                 ExpressionToken::Value(ValueToken::String(StringToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::String(StringToken {
-                        location: *location,
                         value: value.clone(),
+                        location: location.clone(),
                     })))
                 }
                 ExpressionToken::Value(ValueToken::Number(NumberToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
-                        location: *location,
                         value: *value,
+                        location: location.clone(),
                     })))
                 }
                 ExpressionToken::Value(ValueToken::Boolean(BooleanToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
-                        location: *location,
                         value: *value,
+                        location: location.clone(),
                     })))
                 }
                 ExpressionToken::Value(ValueToken::Array(ArrayToken { value, location })) => {
                     Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
-                        location: *location,
                         value: value.clone(),
+                        location: location.clone(),
                     })))
                 }
                 ExpressionToken::Value(ValueToken::Null(NullToken { location })) => {
                     Some(ExpressionToken::Value(ValueToken::Null(NullToken {
-                        location: *location,
+                        location: location.clone(),
                     })))
                 }
                 _ => None,

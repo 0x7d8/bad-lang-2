@@ -1,7 +1,7 @@
 use crate::{
     runtime::Runtime,
     token::{
-        LINE,
+        TokenLocation,
         base::{ArrayToken, BaseToken, BooleanToken, NumberToken, StringToken, ValueToken},
         logic::ExpressionToken,
     },
@@ -33,13 +33,12 @@ pub fn run(
     name: &str,
     args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
+    location: &TokenLocation,
 ) -> Option<ExpressionToken> {
     match name {
         "string#concat" => {
             if args.len() < 2 {
-                panic!("string#concat requires 2 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#concat requires 2 arguments in {}", location);
             }
 
             let mut result = String::new();
@@ -57,10 +56,7 @@ pub fn run(
         }
         "string#format" => {
             if args.is_empty() {
-                panic!(
-                    "string#format requires at least 1 argument on line {}",
-                    unsafe { LINE }
-                );
+                panic!("string#format requires at least 1 argument in {}", location);
             }
 
             let format = runtime.extract_value(&args[0])?.value().to_string();
@@ -84,7 +80,7 @@ pub fn run(
         }
         "string#len" => {
             if args.len() != 1 {
-                panic!("string#len requires 1 argument on line {}", unsafe { LINE });
+                panic!("string#len requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -97,9 +93,7 @@ pub fn run(
         }
         "string#split" => {
             if args.len() != 2 {
-                panic!("string#split requires 2 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#split requires 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -125,9 +119,7 @@ pub fn run(
         }
         "string#trim" => {
             if args.len() != 1 {
-                panic!("string#trim requires 1 argument on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#trim requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -140,9 +132,7 @@ pub fn run(
         }
         "string#to_number" => {
             if args.len() != 1 {
-                panic!("string#to_number requires 1 argument on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#to_number requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -157,9 +147,7 @@ pub fn run(
         }
         "string#replace" => {
             if args.len() != 3 {
-                panic!("string#replace requires 3 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#replace requires 3 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -177,9 +165,7 @@ pub fn run(
         }
         "string#replacen" => {
             if args.len() != 4 {
-                panic!("string#replacen requires 4 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#replacen requires 4 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -193,8 +179,8 @@ pub fn run(
             let n = match n {
                 ValueToken::Number(n) => n.value as usize,
                 _ => panic!(
-                    "string#replacen requires a number as the last argument on line {}",
-                    unsafe { LINE }
+                    "string#replacen requires a number as the last argument in {}",
+                    location
                 ),
             };
 
@@ -205,9 +191,7 @@ pub fn run(
         }
         "string#index_of" => {
             if args.len() != 2 {
-                panic!("string#index_of requires 2 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#index_of requires 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -216,7 +200,7 @@ pub fn run(
             let value = value.value();
             let search = search.value();
 
-            let index = value.find(&search).unwrap_or_else(|| value.len());
+            let index = value.find(&search).unwrap_or(value.len());
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                 location: Default::default(),
@@ -225,9 +209,7 @@ pub fn run(
         }
         "string#slice" => {
             if args.len() != 3 {
-                panic!("string#slice requires 3 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#slice requires 3 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -246,16 +228,14 @@ pub fn run(
                     })))
                 }
                 _ => panic!(
-                    "string#slice requires 2 numbers as the last 2 arguments on line {}",
-                    unsafe { LINE }
+                    "string#slice requires 2 numbers as the last 2 arguments in {}",
+                    location
                 ),
             }
         }
         "string#to_upper" => {
             if args.len() != 1 {
-                panic!("string#to_upper requires 1 argument on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#to_upper requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -268,9 +248,7 @@ pub fn run(
         }
         "string#to_lower" => {
             if args.len() != 1 {
-                panic!("string#to_lower requires 1 argument on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#to_lower requires 1 argument in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -283,10 +261,7 @@ pub fn run(
         }
         "string#starts_with" => {
             if args.len() != 2 {
-                panic!(
-                    "string#starts_with requires 2 arguments on line {}",
-                    unsafe { LINE }
-                );
+                panic!("string#starts_with requires 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -302,9 +277,7 @@ pub fn run(
         }
         "string#ends_with" => {
             if args.len() != 2 {
-                panic!("string#ends_with requires 2 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#ends_with requires 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -320,9 +293,7 @@ pub fn run(
         }
         "string#contains" => {
             if args.len() != 2 {
-                panic!("string#contains requires 2 arguments on line {}", unsafe {
-                    LINE
-                });
+                panic!("string#contains requires 2 arguments in {}", location);
             }
 
             let value = runtime.extract_value(&args[0])?;

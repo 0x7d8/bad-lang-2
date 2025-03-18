@@ -1,4 +1,4 @@
-use super::{Token, base::ValueToken};
+use super::{Token, TokenLocation, base::ValueToken};
 
 use std::sync::{Arc, RwLock};
 
@@ -16,6 +16,9 @@ pub struct LetToken {
     pub is_const: bool,
     pub is_function: bool,
     pub value: Arc<RwLock<ExpressionToken>>,
+
+    #[allow(dead_code)]
+    pub location: TokenLocation,
 }
 
 #[derive(Debug, Clone)]
@@ -23,6 +26,7 @@ pub enum ExpressionToken {
     Return(ReturnToken),
     FnCall(FnCallToken),
     Value(ValueToken),
+    Math(meval::Expr),
     Let(LetToken),
 }
 
@@ -43,6 +47,8 @@ pub struct LetAssignNumToken {
 pub struct FnCallToken {
     pub name: String,
     pub args: Vec<Arc<ExpressionToken>>,
+
+    pub location: TokenLocation,
 }
 
 #[derive(Debug, Clone)]
@@ -55,9 +61,12 @@ pub struct IfToken {
     pub reversed: bool,
     pub condition: Arc<ExpressionToken>,
     pub body: Arc<RwLock<Vec<Token>>>,
+
+    #[allow(dead_code)]
+    pub location: TokenLocation,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BreakToken;
 
 #[derive(Debug, Clone)]

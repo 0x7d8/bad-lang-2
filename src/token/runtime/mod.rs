@@ -9,7 +9,7 @@ pub mod tcp;
 pub mod thread;
 pub mod time;
 
-use super::logic::ExpressionToken;
+use super::{TokenLocation, logic::ExpressionToken};
 use crate::runtime::Runtime;
 
 use std::sync::{Arc, LazyLock};
@@ -35,27 +35,28 @@ pub fn run(
     name: &str,
     args: &[Arc<ExpressionToken>],
     runtime: &mut Runtime,
+    location: &TokenLocation,
 ) -> Option<ExpressionToken> {
     if io::FUNCTIONS.contains(&name) {
-        io::run(name, args, runtime)
+        io::run(name, args, runtime, location)
     } else if string::FUNCTIONS.contains(&name) {
-        string::run(name, args, runtime)
+        string::run(name, args, runtime, location)
     } else if fs::FUNCTIONS.contains(&name) {
-        fs::run(name, args, runtime)
+        fs::run(name, args, runtime, location)
     } else if math::FUNCTIONS.contains(&name) {
-        math::run(name, args, runtime)
+        math::run(name, args, runtime, location)
     } else if array::FUNCTIONS.contains(&name) {
-        array::run(name, args, runtime)
+        array::run(name, args, runtime, location)
     } else if logic::FUNCTIONS.contains(&name) {
-        logic::run(name, args, runtime)
+        logic::run(name, args, runtime, location)
     } else if time::FUNCTIONS.contains(&name) {
-        time::run(name, args, runtime)
+        time::run(name, args, runtime, location)
     } else if rng::FUNCTIONS.contains(&name) {
-        rng::run(name, args, runtime)
+        rng::run(name, args, runtime, location)
     } else if tcp::FUNCTIONS.contains(&name) {
-        tcp::run(name, args, runtime)
+        tcp::run(name, args, runtime, location)
     } else if thread::FUNCTIONS.contains(&name) {
-        thread::run(name, args, runtime)
+        thread::run(name, args, runtime, location)
     } else {
         None
     }
