@@ -71,7 +71,10 @@ impl Runtime {
     }
 
     pub fn scope_aggregate(&self, force: bool) -> HashMap<String, Arc<RwLock<ExpressionToken>>> {
-        if !force && self.modified_vars.borrow().is_empty() && !self.lookup_cache.borrow().is_empty() {
+        if !force
+            && self.modified_vars.borrow().is_empty()
+            && !self.lookup_cache.borrow().is_empty()
+        {
             return self.lookup_cache.borrow().clone();
         }
 
