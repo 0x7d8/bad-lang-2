@@ -221,6 +221,7 @@ impl BaseToken for FunctionToken {
 #[derive(Debug, Clone)]
 pub struct ClassToken {
     pub name: String,
+    pub args: Vec<String>,
     pub body: Arc<RwLock<Vec<Token>>>,
 
     pub location: TokenLocation,

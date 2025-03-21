@@ -113,6 +113,10 @@ impl Runtime {
 
                 if let ValueToken::ClassInstance(class_instance) = &value {
                     self.scope_create();
+                    self.scopes
+                        .last_mut()
+                        .unwrap()
+                        .extend(class_instance.scope.read().unwrap().clone());
 
                     for token in class_instance
                         .class

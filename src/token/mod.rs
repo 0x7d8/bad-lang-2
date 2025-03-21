@@ -178,6 +178,12 @@ impl Tokenizer {
                     {
                         return Some(InsideToken::Function(fn_token.clone()));
                     }
+                } else if let_token.is_class {
+                    if let ExpressionToken::Value(ValueToken::Class(class_token)) =
+                        &*let_token.value.read().unwrap()
+                    {
+                        return Some(InsideToken::Class(class_token.clone()));
+                    }
                 }
             }
             _ => {}
@@ -227,8 +233,7 @@ impl Tokenizer {
         }
 
         if segment == "}" {
-            if !self.inside.is_empty() {
-                self.inside.pop().unwrap();
+            if self.inside.pop().is_some() {
                 return None;
             } else {
                 panic!("unexpected '}}' in {}", self.location);
@@ -264,13 +269,38 @@ impl Tokenizer {
                 location: self.location(),
             }));
         } else if segment.starts_with("class") {
-            let parts: Vec<&str> = segment.split_whitespace().collect();
-            if parts.len() != 3 {
+            let parts: Vec<&str> = segment.split("(").collect();
+            if parts.len() != 2 {
                 return None;
             }
 
-            let name = parts[1];
-            let body = Arc::new(RwLock::new(Vec::new()));
+            let name = parts[0][6..].trim();
+            let mut args: Vec<String> = parts[1][0..parts[1].len() - 3]
+                .split(",")
+                .map(|arg| arg.trim().to_string())
+                .collect();
+            if args.len() == 1 && args[0].is_empty() {
+                args.clear();
+            }
+
+            let mut body = Vec::new();
+
+            for arg in &args {
+                body.push(Token::Let(LetToken {
+                    name: arg.clone(),
+                    is_const: false,
+                    is_function: false,
+                    is_class: false,
+                    value: Arc::new(RwLock::new(ExpressionToken::Value(ValueToken::Null(
+                        NullToken {
+                            location: self.location(),
+                        },
+                    )))),
+                    location: self.location(),
+                }));
+            }
+
+            let body = Arc::new(RwLock::new(body));
 
             let token = Token::Let(LetToken {
                 name: name.to_string(),
@@ -280,6 +310,7 @@ impl Tokenizer {
                 value: Arc::new(RwLock::new(ExpressionToken::Value(ValueToken::Class(
                     ClassToken {
                         name: name.to_string(),
+                        args: args.clone(),
                         body: Arc::clone(&body),
 
                         location: self.location(),
@@ -292,6 +323,7 @@ impl Tokenizer {
             self.inside
                 .push(Arc::new(Mutex::new(InsideToken::Class(ClassToken {
                     name: name.to_string(),
+                    args,
                     body,
 
                     location: self.location(),
@@ -651,12 +683,12 @@ impl Tokenizer {
         }
 
         if segment.starts_with("new") {
-            let parts: Vec<&str> = segment.split_whitespace().collect();
+            let parts: Vec<&str> = segment.split("(").collect();
             if parts.len() != 2 {
                 return None;
             }
 
-            let class = parts[1];
+            let class = parts[0][4..].trim();
 
             for token in self.current_tokens_context().iter().rev() {
                 if let Token::Let(let_token) = token {
@@ -664,10 +696,20 @@ impl Tokenizer {
                         &*let_token.value.read().unwrap()
                     {
                         if class_token.name == class {
+                            let args = self.parse_args(parts[1][0..parts[1].len() - 1].trim());
+                            let mut scope = HashMap::new();
+
+                            for (i, arg) in args.into_iter().enumerate() {
+                                scope.insert(
+                                    class_token.args[i].clone(),
+                                    Arc::new(RwLock::new(arg)),
+                                );
+                            }
+
                             return Some(ExpressionToken::Value(ValueToken::ClassInstance(
                                 ClassInstanceToken {
                                     class: Arc::new(RwLock::new(class_token.clone())),
-                                    scope: Arc::new(RwLock::new(HashMap::new())),
+                                    scope: Arc::new(RwLock::new(scope)),
                                     location: self.location(),
                                 },
                             )));
