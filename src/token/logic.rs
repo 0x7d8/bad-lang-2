@@ -1,4 +1,7 @@
-use super::{base::{ClassInstanceToken, ClassToken, ValueToken}, Token, TokenLocation};
+use super::{
+    Token, TokenLocation,
+    base::{ClassInstanceToken, ClassToken, ValueToken},
+};
 
 use std::sync::{Arc, RwLock};
 
