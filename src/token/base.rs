@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, RwLock},
+};
 
 use super::{Token, TokenLocation, logic::ExpressionToken};
 
@@ -240,11 +243,19 @@ impl BaseToken for ClassToken {
 #[derive(Debug, Clone)]
 pub struct ClassInstanceToken {
     pub class: Arc<RwLock<ClassToken>>,
+    pub scope: Arc<RwLock<HashMap<String, Arc<RwLock<ExpressionToken>>>>>,
+
+    #[allow(dead_code)]
+    pub location: TokenLocation,
 }
 
 impl BaseToken for ClassInstanceToken {
     fn inspect(&self) -> String {
-        format!("ClassInstance({}) {{ }}", self.class.read().unwrap().name)
+        format!(
+            "ClassInstance({}) {{ {} variables }}",
+            self.class.read().unwrap().name,
+            self.scope.read().unwrap().len()
+        )
     }
 
     fn value(&self) -> String {

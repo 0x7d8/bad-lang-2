@@ -111,6 +111,24 @@ impl Runtime {
                     })));
                 }
 
+                if let ValueToken::ClassInstance(class_instance) = &value {
+                    self.scope_create();
+
+                    for token in class_instance
+                        .class
+                        .read()
+                        .unwrap()
+                        .body
+                        .read()
+                        .unwrap()
+                        .iter()
+                    {
+                        self.execute(token);
+                    }
+
+                    *class_instance.scope.write().unwrap() = self.scopes.pop().unwrap();
+                }
+
                 self.scope_set(
                     &let_token.name,
                     Arc::new(RwLock::new(ExpressionToken::Value(value))),
@@ -137,7 +155,6 @@ impl Runtime {
                     }
 
                     self.scopes.last_mut().unwrap().clear();
-
                     self.modified_vars.borrow_mut().clear();
                     self.lookup_cache.borrow_mut().clear();
                 }
@@ -211,34 +228,19 @@ impl Runtime {
 
                 let mut class_scope = false;
                 let fn_var = if let Some(class_token) = &call_token.class {
-                    let body = class_token.body.read().unwrap();
-
                     self.scope_create();
-                    for token in body.iter() {
+                    for token in class_token.body.read().unwrap().iter() {
                         self.execute(token);
                     }
 
                     class_scope = true;
                     self.lookup_variable(&call_token.name)
                 } else if let Some(class_token) = &call_token.class_instance {
-                    let body = class_token.class.read().unwrap();
-                    let body = body.body.read().unwrap();
-
                     self.scope_create();
-                    for token in body.iter() {
-                        if let Token::Let(let_token) = token {
-                            let value = self
-                                .extract_value(&let_token.value.read().unwrap())
-                                .unwrap();
-
-                            self.scope_set(
-                                &let_token.name,
-                                Arc::new(RwLock::new(ExpressionToken::Value(value))),
-                            );
-                        } else {
-                            self.execute(token);
-                        }
-                    }
+                    self.scopes
+                        .last_mut()
+                        .unwrap()
+                        .extend(class_token.scope.read().unwrap().clone());
 
                     class_scope = true;
                     self.lookup_variable(&call_token.name)
@@ -302,35 +304,11 @@ impl Runtime {
 
                         self.scopes.pop();
                         self.call_stack.pop();
-
                         self.rebuild_lookup_cache();
                     }
                 }
 
                 if class_scope {
-                    // write changed variables back to class instance
-                    if let Some(class_instance) = &call_token.class_instance {
-                        for (name, value) in self.scope_aggregate() {
-                            if let Ok(guard) = value.read() {
-                                for token in class_instance
-                                    .class
-                                    .read()
-                                    .unwrap()
-                                    .body
-                                    .read()
-                                    .unwrap()
-                                    .iter()
-                                {
-                                    if let Token::Let(let_token) = token {
-                                        if name == let_token.name {
-                                            *let_token.value.write().unwrap() = guard.clone();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     self.scopes.pop();
                     self.rebuild_lookup_cache();
                 }

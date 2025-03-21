@@ -477,7 +477,35 @@ impl Tokenizer {
                 match parts.len() {
                     // regular function call
                     1 => {
-                        if segment.starts_with(&format!("{}(", let_token.name)) {
+                        if segment.starts_with(&format!("{}::", let_token.name)) {
+                            // static class method call (function with class_static = true)
+                            let fn_name = segment[let_token.name.len() + 2..]
+                                .split("(")
+                                .collect::<Vec<&str>>()[0];
+
+                            if let ExpressionToken::Value(ValueToken::Class(class_token)) =
+                                &*let_token.value.read().unwrap()
+                            {
+                                for token in class_token.body.read().unwrap().iter() {
+                                    if let Token::Let(let_token) = token {
+                                        if let_token.name == fn_name {
+                                            return Some(Token::FnCall(FnCallToken {
+                                                name: fn_name.to_string(),
+                                                class: Some(class_token.clone()),
+                                                class_instance: None,
+                                                args: Vec::new(),
+                                                location: self.location(),
+                                            }));
+                                        }
+                                    }
+                                }
+
+                                panic!(
+                                    "function {} not found in class {} in {}",
+                                    fn_name, class_token.name, self.location
+                                );
+                            }
+                        } else if segment.starts_with(&format!("{}(", let_token.name)) {
                             let tokens = self
                                 .parse_args(&segment[let_token.name.len() + 1..segment.len() - 1]);
 
@@ -492,7 +520,7 @@ impl Tokenizer {
                     }
                     // function call on a class
                     2 => {
-                        if segment.starts_with(&format!("{}.{}(", parts[0], parts[1])) {
+                        if segment.starts_with(&format!("{}.{}(", let_token.name, parts[1])) {
                             let tokens = self.parse_args(
                                 &segment[parts[0].len() + parts[1].len() + 2..segment.len() - 1],
                             );
@@ -510,12 +538,9 @@ impl Tokenizer {
                             }
                         }
                     }
-                    // get a class property
+                    // set a class property
                     3 => {
-                        panic!(
-                            "unable to get class property without assigning it in {}",
-                            self.location
-                        );
+                        panic!("unable to use class property in {}", self.location);
                     }
                     _ => {}
                 };
@@ -642,6 +667,8 @@ impl Tokenizer {
                             return Some(ExpressionToken::Value(ValueToken::ClassInstance(
                                 ClassInstanceToken {
                                     class: Arc::new(RwLock::new(class_token.clone())),
+                                    scope: Arc::new(RwLock::new(HashMap::new())),
+                                    location: self.location(),
                                 },
                             )));
                         }
@@ -787,7 +814,7 @@ impl Tokenizer {
                     }
                     // function call on a class
                     2 => {
-                        if segment.starts_with(&format!("{}.{}(", parts[0], parts[1])) {
+                        if segment.starts_with(&format!("{}.{}(", let_token.name, parts[1])) {
                             let tokens = self.parse_args(
                                 &segment[parts[0].len() + parts[1].len() + 2..segment.len() - 1],
                             );
