@@ -85,7 +85,6 @@ impl Runtime {
 
         for scope in self.scopes.iter().rev() {
             for (name, value) in scope.iter() {
-                println!("name: {}", name);
                 if !cache.contains_key(name) {
                     cache.insert(name.clone(), Arc::clone(value));
                 }
