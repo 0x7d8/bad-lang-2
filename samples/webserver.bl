@@ -9,18 +9,67 @@ class Request(_data) {
 	_end_slice -= 10
 
 	let _path = string#slice(_head, _method_len, _end_slice)
-	let _query = string#slice(_path, string#index_of(_path, "?"), string#len(_path))
-	_path = string#slice(_path, 0, string#index_of(_path, "?"))
+	let _path_query = string#index_of(_path, "?")
+	_path_query++
+	let _query = string#slice(_path, _path_query, string#len(_path))
+	_path_query--
+	_path = string#slice(_path, 0, _path_query)
 
-	fn method() {
+	let _headers = []
+	let lines = string#split(_data, "\n")
+
+	let i = 1
+	let header = []
+	loop {
+		let line = array#get(lines, i)
+		if not (string#trim(line)) {
+			break
+		}
+
+		let key = string#slice(line, 0, string#index_of(line, ":"))
+		let key_len = string#len(key)
+		key_len += 2
+		let value = string#slice(line, key_len, string#len(line))
+
+		let header = array#clone([])
+		array#set(header, 0, key)
+		array#set(header, 1, value)
+		array#push(_headers, header)
+
+		i++
+	}
+
+	fn method(self) {
 		return _method
 	}
 
-	fn path() {
+	fn headers_get(self, key, default) {
+		let result = default
+		let i = 0
+
+		loop {
+			let header = array#get(_headers, i)
+			if not (header) {
+				break
+			}
+
+			let _key = array#get(header, 0)
+			if (#eq(_key, key)) {
+				result = array#get(header, 1)
+				break
+			}
+
+			i++
+		}
+
+		return result
+	}
+
+	fn path(self) {
 		return _path
 	}
 
-	fn query() {
+	fn query(self) {
 		return _query
 	}
 }
@@ -112,6 +161,7 @@ let server = new Server()
 fn index(req, res) {
 	io#println(req.path())
 	io#println(req.query())
+	io#println(req.headers_get("User-Agent"))
 
 	res.status("200 OK")
 	res.header_set("sussy", "baka")
