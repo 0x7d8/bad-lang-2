@@ -1,4 +1,5 @@
 pub mod array;
+pub mod class;
 pub mod fs;
 pub mod io;
 pub mod logic;
@@ -27,6 +28,7 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
     vec.extend(&*rng::FUNCTIONS);
     vec.extend(&*tcp::FUNCTIONS);
     vec.extend(&*thread::FUNCTIONS);
+    vec.extend(&*class::FUNCTIONS);
 
     vec
 });
@@ -57,6 +59,8 @@ pub fn run(
         tcp::run(name, args, runtime, location)
     } else if thread::FUNCTIONS.contains(&name) {
         thread::run(name, args, runtime, location)
+    } else if class::FUNCTIONS.contains(&name) {
+        class::run(name, args, runtime, location)
     } else {
         None
     }

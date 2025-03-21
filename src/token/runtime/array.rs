@@ -118,10 +118,16 @@ pub fn run(
             match value {
                 ValueToken::Array(array) => {
                     let value = array.value.read().unwrap().clone();
+                    let mut new_value = Vec::new();
+
+                    for item in value.iter() {
+                        new_value
+                            .push(ExpressionToken::Value(runtime.extract_value(item).unwrap()));
+                    }
 
                     Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                         location: Default::default(),
-                        value: Arc::new(RwLock::new(value)),
+                        value: Arc::new(RwLock::new(new_value)),
                     })))
                 }
                 _ => {

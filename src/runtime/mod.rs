@@ -113,10 +113,12 @@ impl Runtime {
 
                 if let ValueToken::ClassInstance(class_instance) = &value {
                     self.scope_create();
-                    self.scopes
-                        .last_mut()
-                        .unwrap()
-                        .extend(class_instance.scope.read().unwrap().clone());
+
+                    for (name, value) in class_instance.scope.read().unwrap().iter() {
+                        let value = self.extract_value(&value.read().unwrap()).unwrap();
+
+                        self.scope_set(name, Arc::new(RwLock::new(ExpressionToken::Value(value))));
+                    }
 
                     for token in class_instance
                         .class
@@ -380,6 +382,8 @@ impl Runtime {
                     }
                 }
 
+                println!("variable {} not found", name);
+
                 None
             }
             ExpressionToken::Math(expression) => {
@@ -402,6 +406,8 @@ impl Runtime {
                         value,
                     }))
                 } else {
+                    println!("math expression error: {}", result.unwrap_err());
+
                     None
                 }
             }
