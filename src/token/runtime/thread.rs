@@ -32,14 +32,14 @@ pub fn run(
                         .map(|arg| runtime.extract_value(arg).unwrap())
                         .collect();
 
-                    let scope = runtime.scope_aggregate();
+                    let scope = runtime.scope_aggregate(true);
                     let mut var_tokens = Vec::new();
 
-                    for variable in scope.iter() {
-                        let value = variable.1.read().unwrap();
+                    for (key, var_value) in scope.iter() {
+                        let value = var_value.read().unwrap();
 
                         var_tokens.push(Token::Let(LetToken {
-                            name: variable.0.clone(),
+                            name: key.clone(),
                             is_const: false,
                             is_function: matches!(
                                 runtime.extract_value(&value).unwrap(),
@@ -49,8 +49,7 @@ pub fn run(
                                 runtime.extract_value(&value).unwrap(),
                                 ValueToken::Class(_)
                             ),
-                            value: Arc::clone(variable.1),
-                            location: Default::default(),
+                            value: Arc::clone(var_value),
                         }));
                     }
 
@@ -69,13 +68,10 @@ pub fn run(
                             value: Arc::new(RwLock::new(ExpressionToken::Value(
                                 ValueToken::Function(function),
                             ))),
-                            location: Default::default(),
                         }));
 
                         tokens.push(Token::FnCall(FnCallToken {
                             name: "main".to_string(),
-                            class: None,
-                            class_instance: None,
                             args: args
                                 .iter()
                                 .map(|arg| Arc::new(ExpressionToken::Value(arg.clone())))

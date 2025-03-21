@@ -1,7 +1,4 @@
-use super::{
-    Token, TokenLocation,
-    base::{ClassInstanceToken, ClassToken, ValueToken},
-};
+use super::{Token, TokenLocation, base::ValueToken};
 
 use std::sync::{Arc, RwLock};
 
@@ -20,15 +17,15 @@ pub struct LetToken {
     pub is_function: bool,
     pub is_class: bool,
     pub value: Arc<RwLock<ExpressionToken>>,
-
-    #[allow(dead_code)]
-    pub location: TokenLocation,
 }
 
 #[derive(Debug, Clone)]
 pub enum ExpressionToken {
     Return(ReturnToken),
     FnCall(FnCallToken),
+    ClassInstantiation(ClassInstantiationToken),
+    StaticClassFnCall(StaticClassFnCallToken),
+    ClassFnCall(ClassFnCallToken),
     Value(ValueToken),
     Math(meval::Expr),
     Let(LetToken),
@@ -50,11 +47,29 @@ pub struct LetAssignNumToken {
 #[derive(Debug, Clone)]
 pub struct FnCallToken {
     pub name: String,
-    pub class: Option<ClassToken>,
-    pub class_instance: Option<ClassInstanceToken>,
     pub args: Vec<Arc<ExpressionToken>>,
 
     pub location: TokenLocation,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassInstantiationToken {
+    pub class: String,
+    pub args: Vec<Arc<ExpressionToken>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StaticClassFnCallToken {
+    pub name: String,
+    pub class: String,
+    pub args: Vec<Arc<ExpressionToken>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassFnCallToken {
+    pub name: String,
+    pub instance: String,
+    pub args: Vec<Arc<ExpressionToken>>,
 }
 
 #[derive(Debug, Clone)]
@@ -67,9 +82,6 @@ pub struct IfToken {
     pub reversed: bool,
     pub condition: Arc<ExpressionToken>,
     pub body: Arc<RwLock<Vec<Token>>>,
-
-    #[allow(dead_code)]
-    pub location: TokenLocation,
 }
 
 #[derive(Debug, Clone, Copy)]

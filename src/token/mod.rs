@@ -4,12 +4,12 @@ pub mod macros;
 pub mod runtime;
 
 use base::{
-    ArrayToken, BooleanToken, ClassInstanceToken, ClassToken, FunctionToken, NullToken,
-    NumberToken, StringToken, ValueToken,
+    ArrayToken, BooleanToken, ClassToken, FunctionToken, NullToken, NumberToken, StringToken,
+    ValueToken,
 };
 use logic::{
-    BreakToken, ExpressionToken, FnCallToken, IfToken, LetAssignNumToken, LetAssignToken, LetToken,
-    LoopToken, ReturnToken,
+    BreakToken, ClassFnCallToken, ClassInstantiationToken, ExpressionToken, FnCallToken, IfToken,
+    LetAssignNumToken, LetAssignToken, LetToken, LoopToken, ReturnToken, StaticClassFnCallToken,
 };
 use std::{
     collections::HashMap,
@@ -45,6 +45,8 @@ pub enum Token {
     LetAssign(LetAssignToken),
     LetAssignNum(LetAssignNumToken),
     FnCall(FnCallToken),
+    StaticClassFnCall(StaticClassFnCallToken),
+    ClassFnCall(ClassFnCallToken),
     Loop(LoopToken),
     Break(BreakToken),
     Return(ReturnToken),
@@ -266,7 +268,6 @@ impl Tokenizer {
                 is_function: false,
                 is_class: false,
                 value: Arc::new(RwLock::new(value.unwrap())),
-                location: self.location(),
             }));
         } else if segment.starts_with("class") {
             let parts: Vec<&str> = segment.split("(").collect();
@@ -296,7 +297,6 @@ impl Tokenizer {
                             location: self.location(),
                         },
                     )))),
-                    location: self.location(),
                 }));
             }
 
@@ -316,7 +316,6 @@ impl Tokenizer {
                         location: self.location(),
                     },
                 )))),
-                location: self.location(),
             });
 
             self.push_token(token);
@@ -359,7 +358,6 @@ impl Tokenizer {
                             location: self.location(),
                         },
                     )))),
-                    location: self.location(),
                 }));
             }
 
@@ -379,7 +377,6 @@ impl Tokenizer {
                 is_function: true,
                 is_class: false,
                 value: Arc::new(RwLock::new(ExpressionToken::Value(value))),
-                location: self.location(),
             });
 
             self.push_token(token);
@@ -441,7 +438,6 @@ impl Tokenizer {
                 reversed,
                 condition: Arc::clone(&condition),
                 body: Arc::clone(&body),
-                location: self.location(),
             });
 
             self.push_token(token);
@@ -450,7 +446,6 @@ impl Tokenizer {
                     reversed,
                     condition,
                     body,
-                    location: self.location(),
                 }))));
 
             return None;
@@ -464,8 +459,6 @@ impl Tokenizer {
 
                 return Some(Token::FnCall(FnCallToken {
                     name: func.to_string(),
-                    class: None,
-                    class_instance: None,
                     args: tokens.into_iter().map(Arc::new).collect(),
                     location: self.location(),
                 }));
@@ -510,41 +503,21 @@ impl Tokenizer {
                     // regular function call
                     1 => {
                         if segment.starts_with(&format!("{}::", let_token.name)) {
-                            // static class method call (function with class_static = true)
                             let fn_name = segment[let_token.name.len() + 2..]
                                 .split("(")
                                 .collect::<Vec<&str>>()[0];
 
-                            if let ExpressionToken::Value(ValueToken::Class(class_token)) =
-                                &*let_token.value.read().unwrap()
-                            {
-                                for token in class_token.body.read().unwrap().iter() {
-                                    if let Token::Let(let_token) = token {
-                                        if let_token.name == fn_name {
-                                            return Some(Token::FnCall(FnCallToken {
-                                                name: fn_name.to_string(),
-                                                class: Some(class_token.clone()),
-                                                class_instance: None,
-                                                args: Vec::new(),
-                                                location: self.location(),
-                                            }));
-                                        }
-                                    }
-                                }
-
-                                panic!(
-                                    "function {} not found in class {} in {}",
-                                    fn_name, class_token.name, self.location
-                                );
-                            }
+                            return Some(Token::StaticClassFnCall(StaticClassFnCallToken {
+                                name: fn_name.to_string(),
+                                class: let_token.name.clone(),
+                                args: Vec::new(),
+                            }));
                         } else if segment.starts_with(&format!("{}(", let_token.name)) {
                             let tokens = self
                                 .parse_args(&segment[let_token.name.len() + 1..segment.len() - 1]);
 
                             return Some(Token::FnCall(FnCallToken {
                                 name: let_token.name.clone(),
-                                class: None,
-                                class_instance: None,
                                 args: tokens.into_iter().map(Arc::new).collect(),
                                 location: self.location(),
                             }));
@@ -557,17 +530,11 @@ impl Tokenizer {
                                 &segment[parts[0].len() + parts[1].len() + 2..segment.len() - 1],
                             );
 
-                            if let ExpressionToken::Value(ValueToken::ClassInstance(class_token)) =
-                                &*let_token.value.read().unwrap()
-                            {
-                                return Some(Token::FnCall(FnCallToken {
-                                    name: parts[1].to_string(),
-                                    class: None,
-                                    class_instance: Some(class_token.clone()),
-                                    args: tokens.into_iter().map(Arc::new).collect(),
-                                    location: self.location(),
-                                }));
-                            }
+                            return Some(Token::ClassFnCall(ClassFnCallToken {
+                                name: parts[1].to_string(),
+                                instance: parts[0].to_string(),
+                                args: tokens.into_iter().map(Arc::new).collect(),
+                            }));
                         }
                     }
                     // set a class property
@@ -692,28 +659,15 @@ impl Tokenizer {
 
             for token in self.current_tokens_context().iter().rev() {
                 if let Token::Let(let_token) = token {
-                    if let ExpressionToken::Value(ValueToken::Class(class_token)) =
-                        &*let_token.value.read().unwrap()
-                    {
-                        if class_token.name == class {
-                            let args = self.parse_args(parts[1][0..parts[1].len() - 1].trim());
-                            let mut scope = HashMap::new();
+                    if segment.starts_with(&format!("new {}", let_token.name)) {
+                        let args = self.parse_args(parts[1][0..parts[1].len() - 1].trim());
 
-                            for (i, arg) in args.into_iter().enumerate() {
-                                scope.insert(
-                                    class_token.args[i].clone(),
-                                    Arc::new(RwLock::new(arg)),
-                                );
-                            }
-
-                            return Some(ExpressionToken::Value(ValueToken::ClassInstance(
-                                ClassInstanceToken {
-                                    class: Arc::new(RwLock::new(class_token.clone())),
-                                    scope: Arc::new(RwLock::new(scope)),
-                                    location: self.location(),
-                                },
-                            )));
-                        }
+                        return Some(ExpressionToken::ClassInstantiation(
+                            ClassInstantiationToken {
+                                class: class.to_string(),
+                                args: args.into_iter().map(Arc::new).collect(),
+                            },
+                        ));
                     }
                 }
             }
@@ -756,8 +710,6 @@ impl Tokenizer {
 
                 return Some(ExpressionToken::FnCall(FnCallToken {
                     name: func.to_string(),
-                    class: None,
-                    class_instance: None,
                     args: tokens.into_iter().map(Arc::new).collect(),
                     location: self.location(),
                 }));
@@ -786,7 +738,6 @@ impl Tokenizer {
                             is_function: false,
                             is_class: false,
                             value: Arc::new(RwLock::new(token)),
-                            location: self.location(),
                         }));
                     }
                 }
@@ -799,7 +750,6 @@ impl Tokenizer {
                                 is_function: false,
                                 is_class: false,
                                 value: Arc::new(RwLock::new(token)),
-                                location: self.location(),
                             }));
                         }
                     }
@@ -814,41 +764,23 @@ impl Tokenizer {
                     // regular function call
                     1 => {
                         if segment.starts_with(&format!("{}::", let_token.name)) {
-                            // static class method call (function with class_static = true)
                             let fn_name = segment[let_token.name.len() + 2..]
                                 .split("(")
                                 .collect::<Vec<&str>>()[0];
 
-                            if let ExpressionToken::Value(ValueToken::Class(class_token)) =
-                                &*let_token.value.read().unwrap()
-                            {
-                                for token in class_token.body.read().unwrap().iter() {
-                                    if let Token::Let(let_token) = token {
-                                        if let_token.name == fn_name {
-                                            return Some(ExpressionToken::FnCall(FnCallToken {
-                                                name: fn_name.to_string(),
-                                                class: Some(class_token.clone()),
-                                                class_instance: None,
-                                                args: Vec::new(),
-                                                location: self.location(),
-                                            }));
-                                        }
-                                    }
-                                }
-
-                                panic!(
-                                    "function {} not found in class {} in {}",
-                                    fn_name, class_token.name, self.location
-                                );
-                            }
+                            return Some(ExpressionToken::StaticClassFnCall(
+                                StaticClassFnCallToken {
+                                    name: fn_name.to_string(),
+                                    class: let_token.name.clone(),
+                                    args: Vec::new(),
+                                },
+                            ));
                         } else if segment.starts_with(&format!("{}(", let_token.name)) {
                             let tokens = self
                                 .parse_args(&segment[let_token.name.len() + 1..segment.len() - 1]);
 
                             return Some(ExpressionToken::FnCall(FnCallToken {
                                 name: let_token.name.clone(),
-                                class: None,
-                                class_instance: None,
                                 args: tokens.into_iter().map(Arc::new).collect(),
                                 location: self.location(),
                             }));
@@ -861,17 +793,11 @@ impl Tokenizer {
                                 &segment[parts[0].len() + parts[1].len() + 2..segment.len() - 1],
                             );
 
-                            if let ExpressionToken::Value(ValueToken::ClassInstance(class_token)) =
-                                &*let_token.value.read().unwrap()
-                            {
-                                return Some(ExpressionToken::FnCall(FnCallToken {
-                                    name: parts[1].to_string(),
-                                    class: None,
-                                    class_instance: Some(class_token.clone()),
-                                    args: tokens.into_iter().map(Arc::new).collect(),
-                                    location: self.location(),
-                                }));
-                            }
+                            return Some(ExpressionToken::ClassFnCall(ClassFnCallToken {
+                                name: parts[1].to_string(),
+                                instance: parts[0].to_string(),
+                                args: tokens.into_iter().map(Arc::new).collect(),
+                            }));
                         }
                     }
                     // get a class property
@@ -895,7 +821,6 @@ impl Tokenizer {
                                                 is_function: let_token.is_function,
                                                 is_class: let_token.is_class,
                                                 value: Arc::clone(&let_token.value),
-                                                location: self.location(),
                                             }));
                                         }
                                     }
@@ -919,7 +844,6 @@ impl Tokenizer {
                             ExpressionToken::Value(ValueToken::Class(_))
                         ),
                         value: Arc::clone(&let_token.value),
-                        location: self.location(),
                     }));
                 }
             }
