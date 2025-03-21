@@ -1,0 +1,122 @@
+class Request(_data) {
+	let _head = string#slice(_data, 0, string#index_of(_data, "\n"))
+
+	let _method = string#slice(_head, 0, string#index_of(_head, " "))
+	let _method_len = string#len(_method)
+	_method_len++
+
+	let _end_slice = string#len(_head)
+	_end_slice -= 10
+
+	let _path = string#slice(_head, _method_len, _end_slice)
+	let _query = string#slice(_path, string#index_of(_path, "?"), string#len(_path))
+	_path = string#slice(_path, 0, string#index_of(_path, "?"))
+
+	fn method() {
+		return _method
+	}
+
+	fn path() {
+		return _path
+	}
+
+	fn query() {
+		return _query
+	}
+}
+
+class Response(_status) {
+	if not (_status) {
+		_status = "200 OK"
+	}
+
+	let _data = "route not found"
+	let _headers = ""
+
+	fn header_set(self, key, value) {
+		_headers = string#format("{}\n{}: {}", _headers, key, value)
+	}
+
+	fn status(self, status) {
+		_status = status
+	}
+
+	fn body(self, body) {
+		_data = body
+	}
+}
+
+class Listener(_method, _path, _fn) {
+	fn matches(self, req) {
+		return #and(#eq(_method, req.method()), #eq(_path, req.path()))
+	}
+}
+
+class Server() {
+	let listeners = []
+	let port = 8000
+
+	fn set_port(self, _port) {
+		port = _port
+	}
+
+	fn handleconn(connection, listeners) {
+		let data = tcp#readstr(connection)
+
+		let request = new Request(data)
+		let response = new Response("404 Not Found")
+
+		let i = 0
+		loop {
+			let listener = array#get(listeners, i)
+			if not (listener) {
+				break
+			}
+
+			if (listener.matches(request)) {
+				let _fn = class#get(listener, "_fn")
+				_fn(request, response)
+
+				break
+			}
+
+			i++
+		}
+
+		let status = class#get(response, "_status")
+		let body = class#get(response, "_data")
+		let headers = class#get(response, "_headers")
+
+		let raw_data = string#format("HTTP/1.0 {}{}\n\r\n{}\n", status, headers, body)
+		tcp#write(connection, raw_data)
+	}
+
+	fn start(self) {
+		io#println(string#format("started server on port {}", port))
+		let listener = tcp#bind("0.0.0.0", port)
+
+		loop {
+			let connection = tcp#getconn(listener)
+
+			thread#launch(handleconn, connection, listeners)
+		}
+	}
+
+	fn add_listener(self, listener) {
+		array#push(listeners, listener)
+	}
+}
+
+let server = new Server()
+
+fn index(req, res) {
+	io#println(req.path())
+	io#println(req.query())
+
+	res.status("200 OK")
+	res.header_set("sussy", "baka")
+	res.body("hello world")
+}
+server.add_listener(new Listener("GET", "/", index))
+
+server.start()

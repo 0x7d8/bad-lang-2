@@ -12,7 +12,7 @@ use std::sync::{Arc, RwLock};
 pub struct Runtime {
     tokens: Vec<Token>,
     call_stack: Vec<InsideToken>,
-    pub scopes: Vec<HashMap<String, Arc<RwLock<ExpressionToken>>>>,
+    scopes: Vec<HashMap<String, Arc<RwLock<ExpressionToken>>>>,
 
     lookup_cache: RefCell<HashMap<String, Arc<RwLock<ExpressionToken>>>>,
     modified_vars: RefCell<HashSet<String>>,
