@@ -6,5 +6,5 @@ loop {
 	io#println(rng#rand())
 
 	// f64 in [0, 9] intersection N
-	io#println(math#round(rng#rand_range(0, #=("{} - 1", 10))))
+	io#println(math#round(rng#rand_range(0, 10 - 1)))
 }

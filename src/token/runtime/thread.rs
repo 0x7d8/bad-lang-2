@@ -45,6 +45,10 @@ pub fn run(
                                 runtime.extract_value(&value).unwrap(),
                                 ValueToken::Function(_)
                             ),
+                            is_class: matches!(
+                                runtime.extract_value(&value).unwrap(),
+                                ValueToken::Class(_)
+                            ),
                             value: Arc::clone(variable.1),
                             location: Default::default(),
                         }));
@@ -61,6 +65,7 @@ pub fn run(
                             name: "main".to_string(),
                             is_const: true,
                             is_function: true,
+                            is_class: false,
                             value: Arc::new(RwLock::new(ExpressionToken::Value(
                                 ValueToken::Function(function),
                             ))),
@@ -69,6 +74,8 @@ pub fn run(
 
                         tokens.push(Token::FnCall(FnCallToken {
                             name: "main".to_string(),
+                            class: None,
+                            class_instance: None,
                             args: args
                                 .iter()
                                 .map(|arg| Arc::new(ExpressionToken::Value(arg.clone())))

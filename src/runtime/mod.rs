@@ -209,7 +209,42 @@ impl Runtime {
                     return result;
                 }
 
-                let fn_var = self.lookup_variable(&call_token.name);
+                let mut class_scope = false;
+                let fn_var = if let Some(class_token) = &call_token.class {
+                    let body = class_token.body.read().unwrap();
+
+                    self.scope_create();
+                    for token in body.iter() {
+                        self.execute(token);
+                    }
+
+                    class_scope = true;
+                    self.lookup_variable(&call_token.name)
+                } else if let Some(class_token) = &call_token.class_instance {
+                    let body = class_token.class.read().unwrap();
+                    let body = body.body.read().unwrap();
+
+                    self.scope_create();
+                    for token in body.iter() {
+                        if let Token::Let(let_token) = token {
+                            let value = self
+                                .extract_value(&let_token.value.read().unwrap())
+                                .unwrap();
+
+                            self.scope_set(
+                                &let_token.name,
+                                Arc::new(RwLock::new(ExpressionToken::Value(value))),
+                            );
+                        } else {
+                            self.execute(token);
+                        }
+                    }
+
+                    class_scope = true;
+                    self.lookup_variable(&call_token.name)
+                } else {
+                    self.lookup_variable(&call_token.name)
+                };
 
                 if let Some(fn_var) = fn_var {
                     if fn_var.try_read().is_err() {
@@ -226,7 +261,9 @@ impl Runtime {
                         self.scope_create();
 
                         for (index, arg) in fn_token.args.iter().enumerate() {
-                            if let Some(arg_expr) = call_token.args.get(index) {
+                            if let Some(arg_expr) =
+                                call_token.args.get(index - class_scope as usize)
+                            {
                                 let extracted = self.extract_value(arg_expr).unwrap();
 
                                 self.scope_set(
@@ -234,6 +271,17 @@ impl Runtime {
                                     Arc::new(RwLock::new(ExpressionToken::Value(extracted))),
                                 );
                             }
+                        }
+
+                        if class_scope && call_token.class_instance.is_some() {
+                            self.scope_set(
+                                "self",
+                                Arc::new(RwLock::new(ExpressionToken::Value(
+                                    ValueToken::ClassInstance(
+                                        call_token.class_instance.as_ref().unwrap().clone(),
+                                    ),
+                                ))),
+                            );
                         }
 
                         let body = fn_token.body.read().unwrap();
@@ -257,6 +305,34 @@ impl Runtime {
 
                         self.rebuild_lookup_cache();
                     }
+                }
+
+                if class_scope {
+                    // write changed variables back to class instance
+                    if let Some(class_instance) = &call_token.class_instance {
+                        for (name, value) in self.scope_aggregate() {
+                            if let Ok(guard) = value.read() {
+                                for token in class_instance
+                                    .class
+                                    .read()
+                                    .unwrap()
+                                    .body
+                                    .read()
+                                    .unwrap()
+                                    .iter()
+                                {
+                                    if let Token::Let(let_token) = token {
+                                        if name == let_token.name {
+                                            *let_token.value.write().unwrap() = guard.clone();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    self.scopes.pop();
+                    self.rebuild_lookup_cache();
                 }
             }
             Token::LetAssign(assign_token) => {

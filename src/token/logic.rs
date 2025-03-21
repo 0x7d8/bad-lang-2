@@ -1,4 +1,4 @@
-use super::{Token, TokenLocation, base::ValueToken};
+use super::{base::{ClassInstanceToken, ClassToken, ValueToken}, Token, TokenLocation};
 
 use std::sync::{Arc, RwLock};
 
@@ -15,6 +15,7 @@ pub struct LetToken {
     pub name: String,
     pub is_const: bool,
     pub is_function: bool,
+    pub is_class: bool,
     pub value: Arc<RwLock<ExpressionToken>>,
 
     #[allow(dead_code)]
@@ -46,6 +47,8 @@ pub struct LetAssignNumToken {
 #[derive(Debug, Clone)]
 pub struct FnCallToken {
     pub name: String,
+    pub class: Option<ClassToken>,
+    pub class_instance: Option<ClassInstanceToken>,
     pub args: Vec<Arc<ExpressionToken>>,
 
     pub location: TokenLocation,

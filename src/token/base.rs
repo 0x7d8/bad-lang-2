@@ -216,6 +216,47 @@ impl BaseToken for FunctionToken {
 }
 
 #[derive(Debug, Clone)]
+pub struct ClassToken {
+    pub name: String,
+    pub body: Arc<RwLock<Vec<Token>>>,
+
+    pub location: TokenLocation,
+}
+
+impl BaseToken for ClassToken {
+    fn inspect(&self) -> String {
+        format!("Class({}) {{ }}", self.name)
+    }
+
+    fn value(&self) -> String {
+        self.inspect()
+    }
+
+    fn truthy(&self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassInstanceToken {
+    pub class: Arc<RwLock<ClassToken>>,
+}
+
+impl BaseToken for ClassInstanceToken {
+    fn inspect(&self) -> String {
+        format!("ClassInstance({}) {{ }}", self.class.read().unwrap().name)
+    }
+
+    fn value(&self) -> String {
+        self.inspect()
+    }
+
+    fn truthy(&self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ValueToken {
     String(StringToken),
     Number(NumberToken),
@@ -225,6 +266,8 @@ pub enum ValueToken {
     Buffer(BufferToken),
     NativeMemory(NativeMemoryToken),
     Function(FunctionToken),
+    Class(ClassToken),
+    ClassInstance(ClassInstanceToken),
 }
 
 impl BaseToken for ValueToken {
@@ -238,6 +281,8 @@ impl BaseToken for ValueToken {
             ValueToken::Buffer(buffer_token) => buffer_token.inspect(),
             ValueToken::NativeMemory(native_memory_token) => native_memory_token.inspect(),
             ValueToken::Function(function_token) => function_token.inspect(),
+            ValueToken::Class(class_token) => class_token.inspect(),
+            ValueToken::ClassInstance(class_instance_token) => class_instance_token.inspect(),
         }
     }
 
@@ -251,6 +296,8 @@ impl BaseToken for ValueToken {
             ValueToken::Buffer(buffer_token) => buffer_token.value(),
             ValueToken::NativeMemory(native_memory_token) => native_memory_token.value(),
             ValueToken::Function(function_token) => function_token.value(),
+            ValueToken::Class(class_token) => class_token.value(),
+            ValueToken::ClassInstance(class_instance_token) => class_instance_token.value(),
         }
     }
 
@@ -264,6 +311,8 @@ impl BaseToken for ValueToken {
             ValueToken::Buffer(buffer_token) => buffer_token.truthy(),
             ValueToken::NativeMemory(native_memory_token) => native_memory_token.truthy(),
             ValueToken::Function(function_token) => function_token.truthy(),
+            ValueToken::Class(class_token) => class_token.truthy(),
+            ValueToken::ClassInstance(class_instance_token) => class_instance_token.truthy(),
         }
     }
 }
@@ -279,6 +328,8 @@ impl ValueToken {
             ValueToken::Buffer(token) => token.location.clone(),
             ValueToken::NativeMemory(_) => TokenLocation::default(),
             ValueToken::Function(token) => token.location.clone(),
+            ValueToken::Class(token) => token.location.clone(),
+            ValueToken::ClassInstance(_) => TokenLocation::default(),
         }
     }
 }
