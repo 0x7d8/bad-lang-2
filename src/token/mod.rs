@@ -1,4 +1,5 @@
 pub mod base;
+pub mod comparison;
 pub mod logic;
 pub mod macros;
 pub mod runtime;
@@ -7,6 +8,7 @@ use base::{
     ArrayToken, BooleanToken, ClassToken, FunctionToken, NullToken, NumberToken, StringToken,
     ValueToken,
 };
+use comparison::{COMPARISON_OPERATORS, ComparisonToken};
 use logic::{
     BreakToken, ClassFnCallToken, ClassInstantiationToken, ExpressionToken, FnCallToken, IfToken,
     LetAssignNumToken, LetAssignToken, LetToken, LoopToken, ReturnToken, StaticClassFnCallToken,
@@ -849,12 +851,61 @@ impl Tokenizer {
             }
         }
 
+        // comparison parsing
+        {
+            let mut left = String::new();
+            let mut right = String::new();
+            let mut operator = None;
+
+            let mut on_left = true;
+            for c in segment.chars() {
+                if on_left && left.ends_with(" ") {
+                    left.pop();
+
+                    for o in COMPARISON_OPERATORS {
+                        if left.ends_with(o) {
+                            operator = ComparisonToken::parse_operator(o);
+                            on_left = false;
+
+                            for _ in 0..o.len() {
+                                left.pop();
+                            }
+
+                            continue;
+                        }
+                    }
+                }
+
+                if on_left {
+                    left.push(c);
+                } else {
+                    right.push(c);
+                }
+            }
+
+            if let Some(operator) = operator {
+                let left = self.parse_expression(left.trim());
+                let right = self.parse_expression(right.trim());
+
+                if left.is_none() || right.is_none() {
+                    panic!("unexpected value in {} (did you typo?)", self.location);
+                }
+
+                return Some(ExpressionToken::Comparison(ComparisonToken {
+                    left: Arc::new(left.unwrap()),
+                    right: Arc::new(right.unwrap()),
+                    operator,
+                }));
+            }
+        }
+
+        // math parsing attempt
         {
             let mut context = meval::Context::empty();
 
             for token in self.current_tokens_context().iter().rev() {
                 if let Token::Let(let_token) = token {
-                    context.var(&let_token.name, 0.0);
+                    context.var(&let_token.name, 1.0);
                 }
             }
 

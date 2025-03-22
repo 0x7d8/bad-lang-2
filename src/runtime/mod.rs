@@ -1,6 +1,7 @@
 use crate::token::{
     InsideToken, Token,
-    base::{BaseToken, ClassInstanceToken, NullToken, NumberToken, ValueToken},
+    base::{BaseToken, BooleanToken, ClassInstanceToken, NullToken, NumberToken, ValueToken},
+    comparison::ComparisonOperator,
     logic::{ExpressionToken, LetToken, NumOperation, ReturnToken},
     runtime,
 };
@@ -445,6 +446,87 @@ impl Runtime {
 
     pub fn extract_value(&mut self, token: &ExpressionToken) -> Option<ValueToken> {
         match token {
+            ExpressionToken::Comparison(comparison_token) => {
+                let left = self.extract_value(&comparison_token.left).unwrap();
+                let right = self.extract_value(&comparison_token.right).unwrap();
+
+                match comparison_token.operator {
+                    ComparisonOperator::Equals => Some(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
+                        value: left.value() == right.value(),
+                    })),
+                    ComparisonOperator::EqualsStrict => Some(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
+                        value: left == right,
+                    })),
+                    ComparisonOperator::NotEquals => Some(ValueToken::Boolean(BooleanToken {
+                        location: Default::default(),
+                        value: left.value() != right.value(),
+                    })),
+                    ComparisonOperator::NotEqualsStrict => {
+                        Some(ValueToken::Boolean(BooleanToken {
+                            location: Default::default(),
+                            value: left != right,
+                        }))
+                    }
+                    ComparisonOperator::GreaterThan => {
+                        if let (ValueToken::Number(left), ValueToken::Number(right)) = (left, right)
+                        {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: left.value > right.value,
+                            }))
+                        } else {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: false,
+                            }))
+                        }
+                    }
+                    ComparisonOperator::GreaterThanEquals => {
+                        if let (ValueToken::Number(left), ValueToken::Number(right)) = (left, right)
+                        {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: left.value >= right.value,
+                            }))
+                        } else {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: false,
+                            }))
+                        }
+                    }
+                    ComparisonOperator::LessThan => {
+                        if let (ValueToken::Number(left), ValueToken::Number(right)) = (left, right)
+                        {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: left.value < right.value,
+                            }))
+                        } else {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: false,
+                            }))
+                        }
+                    }
+                    ComparisonOperator::LessThanEquals => {
+                        if let (ValueToken::Number(left), ValueToken::Number(right)) = (left, right)
+                        {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: left.value <= right.value,
+                            }))
+                        } else {
+                            Some(ValueToken::Boolean(BooleanToken {
+                                location: Default::default(),
+                                value: false,
+                            }))
+                        }
+                    }
+                }
+            }
             ExpressionToken::Value(value) => Some(value.clone()),
             ExpressionToken::Let(LetToken { name, .. }) => {
                 if let Some(var) = self.lookup_variable(name) {

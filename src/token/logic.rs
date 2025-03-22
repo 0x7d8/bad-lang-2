@@ -1,4 +1,4 @@
-use super::{Token, TokenLocation, base::ValueToken};
+use super::{Token, TokenLocation, base::ValueToken, comparison::ComparisonToken};
 
 use std::sync::{Arc, RwLock};
 
@@ -21,6 +21,7 @@ pub struct LetToken {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionToken {
+    Comparison(ComparisonToken),
     Return(ReturnToken),
     FnCall(FnCallToken),
     ClassInstantiation(ClassInstantiationToken),

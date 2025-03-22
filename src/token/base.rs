@@ -5,7 +5,7 @@ use std::{
 
 use super::{Token, TokenLocation, logic::ExpressionToken};
 
-pub trait BaseToken {
+pub trait BaseToken: PartialEq<ValueToken> + PartialEq<Self> {
     fn inspect(&self) -> String;
     fn value(&self) -> String;
     fn truthy(&self) -> bool;
@@ -16,6 +16,22 @@ pub struct StringToken {
     pub value: String,
 
     pub location: TokenLocation,
+}
+
+impl PartialEq<ValueToken> for StringToken {
+    fn eq(&self, other: &ValueToken) -> bool {
+        if let ValueToken::String(other) = other {
+            self.value == other.value
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<StringToken> for StringToken {
+    fn eq(&self, other: &StringToken) -> bool {
+        self.value == other.value
+    }
 }
 
 impl BaseToken for StringToken {
@@ -39,6 +55,22 @@ pub struct NumberToken {
     pub location: TokenLocation,
 }
 
+impl PartialEq<ValueToken> for NumberToken {
+    fn eq(&self, other: &ValueToken) -> bool {
+        if let ValueToken::Number(other) = other {
+            self.value == other.value
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<NumberToken> for NumberToken {
+    fn eq(&self, other: &NumberToken) -> bool {
+        self.value == other.value
+    }
+}
+
 impl BaseToken for NumberToken {
     fn inspect(&self) -> String {
         format!("Number(f64) {{ {} }}", self.value)
@@ -60,6 +92,22 @@ pub struct BooleanToken {
     pub location: TokenLocation,
 }
 
+impl PartialEq<ValueToken> for BooleanToken {
+    fn eq(&self, other: &ValueToken) -> bool {
+        if let ValueToken::Boolean(other) = other {
+            self.value == other.value
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<BooleanToken> for BooleanToken {
+    fn eq(&self, other: &BooleanToken) -> bool {
+        self.value == other.value
+    }
+}
+
 impl BaseToken for BooleanToken {
     fn inspect(&self) -> String {
         format!("Boolean(bool) {{ {} }}", self.value)
@@ -79,6 +127,18 @@ pub struct ArrayToken {
     pub value: Arc<RwLock<Vec<ExpressionToken>>>,
 
     pub location: TokenLocation,
+}
+
+impl PartialEq<ValueToken> for ArrayToken {
+    fn eq(&self, _other: &ValueToken) -> bool {
+        false
+    }
+}
+
+impl PartialEq<ArrayToken> for ArrayToken {
+    fn eq(&self, _other: &ArrayToken) -> bool {
+        false
+    }
 }
 
 impl BaseToken for ArrayToken {
@@ -116,6 +176,46 @@ pub struct BufferToken {
     pub value: Arc<RwLock<Vec<u8>>>,
 
     pub location: TokenLocation,
+}
+
+impl PartialEq<ValueToken> for BufferToken {
+    fn eq(&self, _other: &ValueToken) -> bool {
+        if let ValueToken::Buffer(other) = _other {
+            for (left, right) in self
+                .value
+                .read()
+                .unwrap()
+                .iter()
+                .zip(other.value.read().unwrap().iter())
+            {
+                if left != right {
+                    return false;
+                }
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<BufferToken> for BufferToken {
+    fn eq(&self, other: &BufferToken) -> bool {
+        for (left, right) in self
+            .value
+            .read()
+            .unwrap()
+            .iter()
+            .zip(other.value.read().unwrap().iter())
+        {
+            if left != right {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 impl BaseToken for BufferToken {
@@ -156,6 +256,18 @@ pub struct NullToken {
     pub location: TokenLocation,
 }
 
+impl PartialEq<ValueToken> for NullToken {
+    fn eq(&self, other: &ValueToken) -> bool {
+        matches!(other, ValueToken::Null(_))
+    }
+}
+
+impl PartialEq<NullToken> for NullToken {
+    fn eq(&self, _other: &NullToken) -> bool {
+        true
+    }
+}
+
 impl BaseToken for NullToken {
     fn inspect(&self) -> String {
         "Null".to_string()
@@ -174,6 +286,18 @@ impl BaseToken for NullToken {
 pub struct NativeMemoryToken {
     pub name: String,
     pub memory: Arc<Mutex<Box<dyn std::any::Any + Send>>>,
+}
+
+impl PartialEq<ValueToken> for NativeMemoryToken {
+    fn eq(&self, _other: &ValueToken) -> bool {
+        false
+    }
+}
+
+impl PartialEq<NativeMemoryToken> for NativeMemoryToken {
+    fn eq(&self, _other: &NativeMemoryToken) -> bool {
+        false
+    }
 }
 
 impl BaseToken for NativeMemoryToken {
@@ -197,6 +321,18 @@ pub struct FunctionToken {
     pub body: Arc<RwLock<Vec<Token>>>,
 
     pub location: TokenLocation,
+}
+
+impl PartialEq<ValueToken> for FunctionToken {
+    fn eq(&self, _other: &ValueToken) -> bool {
+        false
+    }
+}
+
+impl PartialEq<FunctionToken> for FunctionToken {
+    fn eq(&self, _other: &FunctionToken) -> bool {
+        false
+    }
 }
 
 impl BaseToken for FunctionToken {
@@ -227,6 +363,18 @@ pub struct ClassToken {
     pub location: TokenLocation,
 }
 
+impl PartialEq<ValueToken> for ClassToken {
+    fn eq(&self, _other: &ValueToken) -> bool {
+        false
+    }
+}
+
+impl PartialEq<ClassToken> for ClassToken {
+    fn eq(&self, _other: &ClassToken) -> bool {
+        false
+    }
+}
+
 impl BaseToken for ClassToken {
     fn inspect(&self) -> String {
         format!("Class({}) {{ }}", self.name)
@@ -248,6 +396,18 @@ pub struct ClassInstanceToken {
 
     #[allow(dead_code)]
     pub location: TokenLocation,
+}
+
+impl PartialEq<ValueToken> for ClassInstanceToken {
+    fn eq(&self, _other: &ValueToken) -> bool {
+        false
+    }
+}
+
+impl PartialEq<ClassInstanceToken> for ClassInstanceToken {
+    fn eq(&self, _other: &ClassInstanceToken) -> bool {
+        false
+    }
 }
 
 impl BaseToken for ClassInstanceToken {
@@ -280,6 +440,24 @@ pub enum ValueToken {
     Function(FunctionToken),
     Class(ClassToken),
     ClassInstance(ClassInstanceToken),
+}
+
+impl PartialEq<ValueToken> for ValueToken {
+    fn eq(&self, other: &ValueToken) -> bool {
+        match (self, other) {
+            (ValueToken::String(left), ValueToken::String(right)) => left == right,
+            (ValueToken::Number(left), ValueToken::Number(right)) => left == right,
+            (ValueToken::Boolean(left), ValueToken::Boolean(right)) => left == right,
+            (ValueToken::Null(left), ValueToken::Null(right)) => left == right,
+            (ValueToken::Array(left), ValueToken::Array(right)) => left == right,
+            (ValueToken::Buffer(left), ValueToken::Buffer(right)) => left == right,
+            (ValueToken::NativeMemory(left), ValueToken::NativeMemory(right)) => left == right,
+            (ValueToken::Function(left), ValueToken::Function(right)) => left == right,
+            (ValueToken::Class(left), ValueToken::Class(right)) => left == right,
+            (ValueToken::ClassInstance(left), ValueToken::ClassInstance(right)) => left == right,
+            _ => false,
+        }
+    }
 }
 
 impl BaseToken for ValueToken {
