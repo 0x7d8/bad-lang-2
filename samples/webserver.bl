@@ -11,9 +11,12 @@ class Request(_data) {
 	let _path = string#slice(_head, _method_len, _end_slice)
 	let _path_query = string#index_of(_path, "?")
 	_path_query++
-	let _query = string#slice(_path, _path_query, string#len(_path))
-	_path_query--
-	_path = string#slice(_path, 0, _path_query)
+	let _query = ""
+	if (_path_query <= string#len(_path)) {
+		_query = string#slice(_path, _path_query, string#len(_path))
+		_path_query--
+		_path = string#slice(_path, 0, _path_query)
+	}
 
 	let _headers = []
 	let lines = string#split(_data, "\n")
@@ -54,7 +57,7 @@ class Request(_data) {
 			}
 
 			let _key = array#get(header, 0)
-			if (#eq(_key, key)) {
+			if (_key === key) {
 				result = array#get(header, 1)
 				break
 			}
@@ -97,7 +100,7 @@ class Response(_status) {
 
 class Listener(_method, _path, _fn) {
 	fn matches(self, req) {
-		return #and(#eq(_method, req.method()), #eq(_path, req.path()))
+		return #and(_method === req.method(), _path === req.path())
 	}
 }
 

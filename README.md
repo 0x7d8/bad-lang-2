@@ -8,13 +8,13 @@ fn fib(n) {
   let b = 1
   let temp = 0
 
-  if (#eq(n, 0)) {
+  if (n === 0) {
     return a
   }
 
   let i = 2
   loop {
-    if (#gt(i, n)) {
+    if (i > n) {
       break
     }
 
@@ -31,11 +31,11 @@ fn fib(n) {
 io#println(fib(10))
 
 fn factorial(n) {
-  if (#eq(n, 0)) {
+  if (n === 0) {
     return 1
   }
 
-  if (#lt(n, 0)) {
+  if (n < 0) {
     io#println("Error: Factorial not defined for negative numbers")
     return -1
   }
@@ -44,7 +44,7 @@ fn factorial(n) {
   let i = 1
 
   loop {
-    if (#gt(i, n)) {
+    if (i > n) {
       break
     }
 

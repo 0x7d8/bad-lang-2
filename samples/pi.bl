@@ -7,27 +7,27 @@ fn calc_pi(max_iterations) {
   let sign = 1
   let i = 2
   let count = 0
-  
+
   // Iterate to calculate Pi
   loop {
     // Exit if we've reached the maximum iterations
-    if (#gt(count, max_iterations)) {
+    if (count > max_iterations) {
       break
     }
-    
+
     // Calculate the denominator
     let denom = #=("{} * ({} + 1) * ({} + 2)", i, i, i)
-    
+
     // Calculate term
-    let term = #=("4.0 / {}", denom)
-    
+    let term = 4 / denom
+
     // Apply term with the current sign
-    let signed_term = #=("{} * {}", sign, term)
+    let signed_term = sign * term
     pi += signed_term
-    
+
     // Update sign for next iteration (alternate between 1 and -1)
     sign *= -1
-    
+
     // Increment values for next iteration
     i += 2
     count++

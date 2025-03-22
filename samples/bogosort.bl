@@ -1,6 +1,6 @@
 fn is_sorted(n) {
 	let len = array#len(n)
-	if (#lt(len, 2)) {
+	if (len < 2) {
 		return true
 	}
 
@@ -9,17 +9,20 @@ fn is_sorted(n) {
 	let j = 1
 	let sorted = true
 	loop {
-		if (#eq(j, len)) {
+		if (j === len) {
 			sorted = true
 			break
 		}
-		if (#lt(array#get(n, j), prev)) {
+
+		if (array#get(n, j) < prev) {
 			sorted = false
 			break
 		}
+
 		prev = array#get(n, j)
 		j++
 	}
+
 	return sorted
 }
 
@@ -30,9 +33,10 @@ fn bogosort(n) {
 		if (is_sorted(n)) {
 			break
 		}
+
 		let i = 0
 		loop {
-			if (#gt(i + 1, len)) {
+			if (i >= len) {
 				break
 			}
 
