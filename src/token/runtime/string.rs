@@ -46,7 +46,7 @@ pub fn run(
             for arg in args {
                 let value = runtime.extract_value(arg)?;
 
-                result.push_str(&value.value());
+                result.push_str(&value.value(0));
             }
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
@@ -59,13 +59,13 @@ pub fn run(
                 panic!("string#format requires at least 1 argument in {}", location);
             }
 
-            let format = runtime.extract_value(&args[0])?.value().to_string();
+            let format = runtime.extract_value(&args[0])?.value(0).to_string();
             let mut values = Vec::new();
 
             for arg in args.iter().skip(1) {
                 let value = runtime.extract_value(arg)?;
 
-                values.push(value.value());
+                values.push(value.value(0));
             }
 
             let mut result = format;
@@ -84,7 +84,7 @@ pub fn run(
             }
 
             let value = runtime.extract_value(&args[0])?;
-            let len = value.value().len();
+            let len = value.value(0).len();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                 location: Default::default(),
@@ -99,8 +99,8 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             let separator = runtime.extract_value(&args[1])?;
 
-            let value = value.value();
-            let separator = separator.value();
+            let value = value.value(0);
+            let separator = separator.value(0);
 
             Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
                 location: Default::default(),
@@ -123,7 +123,7 @@ pub fn run(
             }
 
             let value = runtime.extract_value(&args[0])?;
-            let value = value.value();
+            let value = value.value(0);
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
                 location: Default::default(),
@@ -136,7 +136,7 @@ pub fn run(
             }
 
             let value = runtime.extract_value(&args[0])?;
-            let value = value.value();
+            let value = value.value(0);
 
             let value = value.parse::<f64>().unwrap();
 
@@ -154,9 +154,9 @@ pub fn run(
             let search = runtime.extract_value(&args[1])?;
             let replace = runtime.extract_value(&args[2])?;
 
-            let value = value.value();
-            let search = search.value();
-            let replace = replace.value();
+            let value = value.value(0);
+            let search = search.value(0);
+            let replace = replace.value(0);
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
                 location: Default::default(),
@@ -173,9 +173,9 @@ pub fn run(
             let replace = runtime.extract_value(&args[2])?;
             let n = runtime.extract_value(&args[3])?;
 
-            let value = value.value();
-            let search = search.value();
-            let replace = replace.value();
+            let value = value.value(0);
+            let search = search.value(0);
+            let replace = replace.value(0);
             let n = match n {
                 ValueToken::Number(n) => n.value as usize,
                 _ => panic!(
@@ -197,8 +197,8 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             let search = runtime.extract_value(&args[1])?;
 
-            let value = value.value();
-            let search = search.value();
+            let value = value.value(0);
+            let search = search.value(0);
 
             let index = value.find(&search).unwrap_or(value.len());
 
@@ -216,7 +216,7 @@ pub fn run(
             let start = runtime.extract_value(&args[1])?;
             let end = runtime.extract_value(&args[2])?;
 
-            let value = value.value();
+            let value = value.value(0);
             match (start, end) {
                 (ValueToken::Number(start), ValueToken::Number(end)) => {
                     let start = start.value as usize;
@@ -239,7 +239,7 @@ pub fn run(
             }
 
             let value = runtime.extract_value(&args[0])?;
-            let value = value.value();
+            let value = value.value(0);
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
                 location: Default::default(),
@@ -252,7 +252,7 @@ pub fn run(
             }
 
             let value = runtime.extract_value(&args[0])?;
-            let value = value.value();
+            let value = value.value(0);
 
             Some(ExpressionToken::Value(ValueToken::String(StringToken {
                 location: Default::default(),
@@ -267,8 +267,8 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             let search = runtime.extract_value(&args[1])?;
 
-            let value = value.value();
-            let search = search.value();
+            let value = value.value(0);
+            let search = search.value(0);
 
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
                 location: Default::default(),
@@ -283,8 +283,8 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             let search = runtime.extract_value(&args[1])?;
 
-            let value = value.value();
-            let search = search.value();
+            let value = value.value(0);
+            let search = search.value(0);
 
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
                 location: Default::default(),
@@ -299,8 +299,8 @@ pub fn run(
             let value = runtime.extract_value(&args[0])?;
             let search = runtime.extract_value(&args[1])?;
 
-            let value = value.value();
-            let search = search.value();
+            let value = value.value(0);
+            let search = search.value(0);
 
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
                 location: Default::default(),

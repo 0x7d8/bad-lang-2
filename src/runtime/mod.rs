@@ -457,7 +457,7 @@ impl Runtime {
                 match comparison_token.operator {
                     ComparisonOperator::Equals => Some(ValueToken::Boolean(BooleanToken {
                         location: Default::default(),
-                        value: left.value() == right.value(),
+                        value: left.value(0) == right.value(0),
                     })),
                     ComparisonOperator::EqualsStrict => Some(ValueToken::Boolean(BooleanToken {
                         location: Default::default(),
@@ -465,7 +465,7 @@ impl Runtime {
                     })),
                     ComparisonOperator::NotEquals => Some(ValueToken::Boolean(BooleanToken {
                         location: Default::default(),
-                        value: left.value() != right.value(),
+                        value: left.value(0) != right.value(0),
                     })),
                     ComparisonOperator::NotEqualsStrict => {
                         Some(ValueToken::Boolean(BooleanToken {

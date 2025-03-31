@@ -7,7 +7,7 @@ use super::{Token, TokenLocation, logic::ExpressionToken};
 
 pub trait BaseToken: PartialEq<ValueToken> + PartialEq<Self> {
     fn inspect(&self) -> String;
-    fn value(&self) -> String;
+    fn value(&self, spaces: usize) -> String;
     fn truthy(&self) -> bool;
 }
 
@@ -39,8 +39,8 @@ impl BaseToken for StringToken {
         format!("String({}) {{ {} }}", self.value.len(), self.value)
     }
 
-    fn value(&self) -> String {
-        self.value.clone()
+    fn value(&self, spaces: usize) -> String {
+        " ".repeat(spaces) + &self.value
     }
 
     fn truthy(&self) -> bool {
@@ -76,8 +76,8 @@ impl BaseToken for NumberToken {
         format!("Number(f64) {{ {} }}", self.value)
     }
 
-    fn value(&self) -> String {
-        self.value.to_string()
+    fn value(&self, spaces: usize) -> String {
+        " ".repeat(spaces) + &self.value.to_string()
     }
 
     fn truthy(&self) -> bool {
@@ -113,8 +113,8 @@ impl BaseToken for BooleanToken {
         format!("Boolean(bool) {{ {} }}", self.value)
     }
 
-    fn value(&self) -> String {
-        self.value.to_string()
+    fn value(&self, spaces: usize) -> String {
+        " ".repeat(spaces) + &self.value.to_string()
     }
 
     fn truthy(&self) -> bool {
@@ -154,20 +154,81 @@ impl BaseToken for ArrayToken {
         result + "}"
     }
 
-    fn value(&self) -> String {
-        let mut result = "[\n".to_string();
+    fn value(&self, spaces: usize) -> String {
+        let mut result = " ".repeat(spaces) + "[\n";
 
         for token in self.value.read().unwrap().iter() {
             if let ExpressionToken::Value(value_token) = token {
-                result.push_str(&format!("{}\n", value_token.value()));
+                result.push_str(&format!("{}\n", value_token.value(spaces + 2)));
             }
         }
 
-        result + "]"
+        result.push_str(" ".repeat(spaces).as_str());
+        result.push(']');
+
+        result
     }
 
     fn truthy(&self) -> bool {
         !self.value.read().unwrap().is_empty()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RangeToken {
+    pub start: Arc<RwLock<ExpressionToken>>,
+    pub end: Arc<RwLock<ExpressionToken>>,
+
+    pub location: TokenLocation,
+}
+
+impl PartialEq<ValueToken> for RangeToken {
+    fn eq(&self, _other: &ValueToken) -> bool {
+        false
+    }
+}
+
+impl PartialEq<RangeToken> for RangeToken {
+    fn eq(&self, _other: &RangeToken) -> bool {
+        false
+    }
+}
+
+impl BaseToken for RangeToken {
+    fn inspect(&self) -> String {
+        format!(
+            "Range({}..{}) {{ <range> }}",
+            if let ExpressionToken::Value(value_token) = &*self.start.read().unwrap() {
+                value_token.inspect()
+            } else {
+                "<start expression>".to_string()
+            },
+            if let ExpressionToken::Value(value_token) = &*self.end.read().unwrap() {
+                value_token.inspect()
+            } else {
+                "<end expression>".to_string()
+            }
+        )
+    }
+
+    fn value(&self, spaces: usize) -> String {
+        format!(
+            "{}..{}",
+            if let ExpressionToken::Value(value_token) = &*self.start.read().unwrap() {
+                value_token.value(spaces)
+            } else {
+                "<start expression>".to_string()
+            },
+            if let ExpressionToken::Value(value_token) = &*self.end.read().unwrap() {
+                value_token.value(spaces)
+            } else {
+                "<end expression>".to_string()
+            }
+        )
+    }
+
+    fn truthy(&self) -> bool {
+        true
     }
 }
 
@@ -234,16 +295,18 @@ impl BaseToken for BufferToken {
         result + "}"
     }
 
-    fn value(&self) -> String {
+    fn value(&self, spaces: usize) -> String {
         let length = self.value.read().unwrap().len();
 
-        self.value
-            .read()
-            .unwrap()
-            .iter()
-            .fold(String::with_capacity(length * 3), |acc, byte| {
-                acc + &format!("{:02x} ", byte)
-            })
+        " ".repeat(spaces)
+            + &self
+                .value
+                .read()
+                .unwrap()
+                .iter()
+                .fold(String::with_capacity(length * 3), |acc, byte| {
+                    acc + &format!("{:02x} ", byte)
+                })
     }
 
     fn truthy(&self) -> bool {
@@ -273,8 +336,8 @@ impl BaseToken for NullToken {
         "Null".to_string()
     }
 
-    fn value(&self) -> String {
-        "null".to_string()
+    fn value(&self, spaces: usize) -> String {
+        " ".repeat(spaces) + "null"
     }
 
     fn truthy(&self) -> bool {
@@ -305,7 +368,7 @@ impl BaseToken for NativeMemoryToken {
         format!("NativeMemory({}) {{ <native> }}", self.name)
     }
 
-    fn value(&self) -> String {
+    fn value(&self, _: usize) -> String {
         self.inspect()
     }
 
@@ -345,7 +408,7 @@ impl BaseToken for FunctionToken {
         )
     }
 
-    fn value(&self) -> String {
+    fn value(&self, _: usize) -> String {
         self.inspect()
     }
 
@@ -380,7 +443,7 @@ impl BaseToken for ClassToken {
         format!("Class({}) {{ }}", self.name)
     }
 
-    fn value(&self) -> String {
+    fn value(&self, _: usize) -> String {
         self.inspect()
     }
 
@@ -419,7 +482,7 @@ impl BaseToken for ClassInstanceToken {
         )
     }
 
-    fn value(&self) -> String {
+    fn value(&self, _: usize) -> String {
         self.inspect()
     }
 
@@ -435,6 +498,7 @@ pub enum ValueToken {
     Boolean(BooleanToken),
     Null(NullToken),
     Array(ArrayToken),
+    Range(RangeToken),
     Buffer(BufferToken),
     NativeMemory(NativeMemoryToken),
     Function(FunctionToken),
@@ -450,6 +514,7 @@ impl PartialEq<ValueToken> for ValueToken {
             (ValueToken::Boolean(left), ValueToken::Boolean(right)) => left == right,
             (ValueToken::Null(left), ValueToken::Null(right)) => left == right,
             (ValueToken::Array(left), ValueToken::Array(right)) => left == right,
+            (ValueToken::Range(left), ValueToken::Range(right)) => left == right,
             (ValueToken::Buffer(left), ValueToken::Buffer(right)) => left == right,
             (ValueToken::NativeMemory(left), ValueToken::NativeMemory(right)) => left == right,
             (ValueToken::Function(left), ValueToken::Function(right)) => left == right,
@@ -468,6 +533,7 @@ impl BaseToken for ValueToken {
             ValueToken::Boolean(boolean_token) => boolean_token.inspect(),
             ValueToken::Null(null_token) => null_token.inspect(),
             ValueToken::Array(array_token) => array_token.inspect(),
+            ValueToken::Range(range_token) => range_token.inspect(),
             ValueToken::Buffer(buffer_token) => buffer_token.inspect(),
             ValueToken::NativeMemory(native_memory_token) => native_memory_token.inspect(),
             ValueToken::Function(function_token) => function_token.inspect(),
@@ -476,18 +542,19 @@ impl BaseToken for ValueToken {
         }
     }
 
-    fn value(&self) -> String {
+    fn value(&self, spaces: usize) -> String {
         match self {
-            ValueToken::String(string_token) => string_token.value(),
-            ValueToken::Number(number_token) => number_token.value(),
-            ValueToken::Boolean(boolean_token) => boolean_token.value(),
-            ValueToken::Null(null_token) => null_token.value(),
-            ValueToken::Array(array_token) => array_token.value(),
-            ValueToken::Buffer(buffer_token) => buffer_token.value(),
-            ValueToken::NativeMemory(native_memory_token) => native_memory_token.value(),
-            ValueToken::Function(function_token) => function_token.value(),
-            ValueToken::Class(class_token) => class_token.value(),
-            ValueToken::ClassInstance(class_instance_token) => class_instance_token.value(),
+            ValueToken::String(string_token) => string_token.value(spaces),
+            ValueToken::Number(number_token) => number_token.value(spaces),
+            ValueToken::Boolean(boolean_token) => boolean_token.value(spaces),
+            ValueToken::Null(null_token) => null_token.value(spaces),
+            ValueToken::Array(array_token) => array_token.value(spaces),
+            ValueToken::Range(range_token) => range_token.value(spaces),
+            ValueToken::Buffer(buffer_token) => buffer_token.value(spaces),
+            ValueToken::NativeMemory(native_memory_token) => native_memory_token.value(spaces),
+            ValueToken::Function(function_token) => function_token.value(spaces),
+            ValueToken::Class(class_token) => class_token.value(spaces),
+            ValueToken::ClassInstance(class_instance_token) => class_instance_token.value(spaces),
         }
     }
 
@@ -498,6 +565,7 @@ impl BaseToken for ValueToken {
             ValueToken::Boolean(boolean_token) => boolean_token.truthy(),
             ValueToken::Null(null_token) => null_token.truthy(),
             ValueToken::Array(array_token) => array_token.truthy(),
+            ValueToken::Range(range_token) => range_token.truthy(),
             ValueToken::Buffer(buffer_token) => buffer_token.truthy(),
             ValueToken::NativeMemory(native_memory_token) => native_memory_token.truthy(),
             ValueToken::Function(function_token) => function_token.truthy(),
@@ -515,6 +583,7 @@ impl ValueToken {
             ValueToken::Boolean(token) => token.location.clone(),
             ValueToken::Null(token) => token.location.clone(),
             ValueToken::Array(token) => token.location.clone(),
+            ValueToken::Range(token) => token.location.clone(),
             ValueToken::Buffer(token) => token.location.clone(),
             ValueToken::NativeMemory(_) => TokenLocation::default(),
             ValueToken::Function(token) => token.location.clone(),

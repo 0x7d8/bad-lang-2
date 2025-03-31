@@ -179,7 +179,7 @@ pub fn run(
                     .unwrap();
 
                 let data = match data {
-                    Some(data) => data.value().to_string(),
+                    Some(data) => data.value(0).to_string(),
                     _ => panic!(
                         "tcp#write requires a value as the second argument in {}",
                         location

@@ -27,7 +27,7 @@ pub fn run(
             }
 
             let value = runtime.extract_value(&args[0])?;
-            let path = value.value().to_string();
+            let path = value.value(0).to_string();
             let result = meval::eval_str(&path).unwrap();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
@@ -44,7 +44,7 @@ pub fn run(
             }
 
             let expression = string::run("string#format", args, runtime, location)?;
-            let result = meval::eval_str(runtime.extract_value(&expression)?.value()).unwrap();
+            let result = meval::eval_str(runtime.extract_value(&expression)?.value(0)).unwrap();
 
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                 location: Default::default(),

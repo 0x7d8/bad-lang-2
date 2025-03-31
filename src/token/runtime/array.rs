@@ -19,6 +19,7 @@ pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
         "array#clone",
         "array#concat",
         "array#contains",
+        "array#from",
         "array#get",
         "array#set",
     ]
@@ -101,6 +102,24 @@ pub fn run(
                         value: len as f64,
                     })))
                 }
+                ValueToken::Range(range) => {
+                    let start = runtime.extract_value(&range.start.read().unwrap())?;
+                    let end = runtime.extract_value(&range.end.read().unwrap())?;
+
+                    if let (ValueToken::Number(start), ValueToken::Number(end)) = (start, end) {
+                        let len = (end.value - start.value).abs() as usize;
+
+                        Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                            location: Default::default(),
+                            value: len as f64,
+                        })))
+                    } else {
+                        panic!(
+                            "array#len requires a range with a set start & end as the first argument in {}",
+                            location
+                        );
+                    }
+                }
                 _ => {
                     panic!(
                         "array#len requires an array as the first argument in {}",
@@ -178,7 +197,7 @@ pub fn run(
 
                     let contains = array.value.read().unwrap().iter().any(|item| {
                         let item = runtime.extract_value(item).unwrap();
-                        item.value() == target.value()
+                        item.value(0) == target.value(0)
                     });
 
                     Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
@@ -189,6 +208,90 @@ pub fn run(
                 _ => {
                     panic!(
                         "array#contains requires an array as the first argument in {}",
+                        location
+                    );
+                }
+            }
+        }
+        "array#from" => {
+            if args.len() != 1 {
+                panic!("array#from requires 1 argument in {}", location);
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            match value {
+                ValueToken::Array(array) => {
+                    Some(ExpressionToken::Value(ValueToken::Array(array.clone())))
+                }
+                ValueToken::Range(range) => {
+                    let start = runtime.extract_value(&range.start.read().unwrap())?;
+                    let end = runtime.extract_value(&range.end.read().unwrap())?;
+
+                    if let (ValueToken::Number(start), ValueToken::Number(end)) = (start, end) {
+                        let start = start.value as usize;
+                        let end = end.value as usize;
+
+                        let mut new_value = Vec::new();
+                        for i in start..end {
+                            new_value.push(ExpressionToken::Value(ValueToken::Number(
+                                NumberToken {
+                                    location: Default::default(),
+                                    value: i as f64,
+                                },
+                            )));
+                        }
+
+                        Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                            location: Default::default(),
+                            value: Arc::new(RwLock::new(new_value)),
+                        })))
+                    } else {
+                        panic!(
+                            "array#from requires a range with a set start & end as the first argument in {}",
+                            location
+                        );
+                    }
+                }
+                ValueToken::String(string) => {
+                    let mut new_value = Vec::new();
+                    for c in string.value.chars() {
+                        new_value.push(ExpressionToken::Value(ValueToken::String(StringToken {
+                            location: Default::default(),
+                            value: c.to_string(),
+                        })));
+                    }
+
+                    Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                        location: Default::default(),
+                        value: Arc::new(RwLock::new(new_value)),
+                    })))
+                }
+                ValueToken::Number(num) => {
+                    let mut new_value = Vec::new();
+                    let integer = num.value as u64;
+
+                    for i in 0..64 {
+                        let value = (integer >> i) & 1;
+                        new_value.push(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
+                            location: Default::default(),
+                            value: value == 1,
+                        })));
+                    }
+
+                    Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                        location: Default::default(),
+                        value: Arc::new(RwLock::new(new_value)),
+                    })))
+                }
+                ValueToken::Null(_) => {
+                    Some(ExpressionToken::Value(ValueToken::Array(ArrayToken {
+                        location: Default::default(),
+                        value: Arc::new(RwLock::new(Vec::new())),
+                    })))
+                }
+                _ => {
+                    panic!(
+                        "array#from requires an array, range, number or string as the first argument in {}",
                         location
                     );
                 }
@@ -221,6 +324,46 @@ pub fn run(
                                 location
                             );
                         }
+                    }
+                }
+                ValueToken::Range(range) => {
+                    let start = runtime.extract_value(&range.start.read().unwrap())?;
+                    let end = runtime.extract_value(&range.end.read().unwrap())?;
+
+                    if let (ValueToken::Number(start), ValueToken::Number(end)) = (start, end) {
+                        let start = start.value as usize;
+                        let end = end.value as usize;
+
+                        // get number from (start..end) at provided index
+                        let index = runtime.extract_value(&args[1])?;
+                        match index {
+                            ValueToken::Number(number) => {
+                                let index = number.value as usize;
+                                let value = start + index;
+
+                                if value > end {
+                                    Some(ExpressionToken::Value(ValueToken::Null(NullToken {
+                                        location: Default::default(),
+                                    })))
+                                } else {
+                                    Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                                        location: Default::default(),
+                                        value: value as f64,
+                                    })))
+                                }
+                            }
+                            _ => {
+                                panic!(
+                                    "array#get requires a number as the second argument in {}",
+                                    location
+                                );
+                            }
+                        }
+                    } else {
+                        panic!(
+                            "array#get requires a range with a set start & end as the first argument in {}",
+                            location
+                        );
                     }
                 }
                 ValueToken::String(string) => {

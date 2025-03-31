@@ -24,7 +24,7 @@ pub fn run(
             }
 
             let value = runtime.extract_value(&args[0])?;
-            println!("{}", value.value());
+            println!("{}", value.value(0));
 
             Some(ExpressionToken::Value(ValueToken::Null(NullToken {
                 location: Default::default(),

@@ -5,8 +5,8 @@ pub mod macros;
 pub mod runtime;
 
 use base::{
-    ArrayToken, BooleanToken, ClassToken, FunctionToken, NullToken, NumberToken, StringToken,
-    ValueToken,
+    ArrayToken, BooleanToken, ClassToken, FunctionToken, NullToken, NumberToken, RangeToken,
+    StringToken, ValueToken,
 };
 use comparison::{COMPARISON_OPERATORS, ComparisonToken};
 use logic::{
@@ -761,6 +761,25 @@ impl Tokenizer {
                 location: self.location(),
                 value: number,
             })));
+        }
+
+        // check for ranges (x..x)
+        {
+            let parts = segment.splitn(2, "..").collect::<Vec<&str>>();
+            if let (Some(left), Some(right)) = (parts.first(), parts.get(1)) {
+                if !left.is_empty() && !right.is_empty() {
+                    let left = self.parse_expression(left);
+                    let right = self.parse_expression(right);
+
+                    if let (Some(start), Some(end)) = (left, right) {
+                        return Some(ExpressionToken::Value(ValueToken::Range(RangeToken {
+                            location: self.location(),
+                            start: Arc::new(RwLock::new(start)),
+                            end: Arc::new(RwLock::new(end)),
+                        })));
+                    }
+                }
+            }
         }
 
         if let Some(stripped) = segment.strip_prefix("0x") {

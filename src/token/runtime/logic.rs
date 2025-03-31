@@ -29,7 +29,7 @@ pub fn run(
 
             Some(ExpressionToken::Value(ValueToken::Boolean(BooleanToken {
                 location: Default::default(),
-                value: left.value() == right.value(),
+                value: left.value(0) == right.value(0),
             })))
         }
         "#lt" => {
