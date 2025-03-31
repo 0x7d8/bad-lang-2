@@ -346,6 +346,10 @@ impl Runtime {
                                 self.scope_create();
 
                                 for (index, arg) in fn_token.args.iter().enumerate() {
+                                    if index == 0 {
+                                        continue;
+                                    }
+
                                     if let Some(arg_expr) = call_token.args.get(index - 1) {
                                         let extracted = self.extract_value(arg_expr).unwrap();
 

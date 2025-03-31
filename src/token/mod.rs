@@ -99,8 +99,7 @@ impl Tokenizer {
         for line in self.input.clone().lines() {
             self.location.line += 1;
 
-            let token = self.tokenize(line);
-            if let Some(token) = token {
+            if let Some(token) = self.tokenize(line) {
                 self.push_token(token);
             }
         }
@@ -244,7 +243,82 @@ impl Tokenizer {
             }
         }
 
-        if segment.starts_with("let") {
+        if segment.starts_with("include") {
+            let parts: Vec<&str> = segment.splitn(2, " ").collect();
+            if parts.len() != 2 {
+                panic!("invalid include in {}", self.location);
+            }
+
+            let file = self.parse_expression(parts[1]);
+            if let Some(file) = file {
+                if let ExpressionToken::Value(ValueToken::String(string_token)) = file {
+                    let file = std::fs::read_to_string(&string_token.value);
+                    if let Ok(file) = file {
+                        let mut tokenizer = Tokenizer::new(&file, &string_token.value);
+                        tokenizer.parse();
+
+                        for token in tokenizer.tokens {
+                            self.push_token(token);
+                        }
+                    } else {
+                        panic!("unable to read file \"{}\" in {}", string_token.value, self.location);
+                    }
+                } else {
+                    panic!("unexpected value in {} (did you typo?)", self.location);
+                }
+            } else {
+                panic!("unexpected file in {} (did you typo?)", self.location);
+            }
+
+            return None;
+        } else if segment.starts_with("import") {
+            let parts: Vec<&str> = segment.splitn(4, " ").collect();
+            if parts.len() != 4 || parts[2] != "as" {
+                panic!("invalid import in {}", self.location);
+            }
+
+            let name = parts[3];
+            let file = self.parse_expression(parts[1]);
+            if let Some(file) = file {
+                if let ExpressionToken::Value(ValueToken::String(string_token)) = file {
+                    let class = ClassToken {
+                        name: name.to_string(),
+                        args: Vec::new(),
+                        body: Arc::new(RwLock::new(Vec::new())),
+
+                        location: self.location(),
+                    };
+
+                    let file = std::fs::read_to_string(&string_token.value);
+                    if let Ok(file) = file {
+                        let mut tokenizer = Tokenizer::new(&file, &string_token.value);
+                        tokenizer.parse();
+
+                        for token in tokenizer.tokens {
+                            class.body.write().unwrap().push(token);
+                        }
+                    } else {
+                        panic!("unable to read file \"{}\" in {}", string_token.value, self.location);
+                    }
+
+                    let token = Token::Let(LetToken {
+                        name: name.to_string(),
+                        is_const: true,
+                        is_function: false,
+                        is_class: true,
+                        value: Arc::new(RwLock::new(ExpressionToken::Value(ValueToken::Class(
+                            class,
+                        )))),
+                    });
+
+                    return Some(token);
+                } else {
+                    panic!("unexpected value in {} (did you typo?)", self.location);
+                }
+            } else {
+                panic!("unexpected file in {} (did you typo?)", self.location);
+            }
+        } else if segment.starts_with("let") {
             let parts: Vec<&str> = segment.split_whitespace().collect();
             if parts.len() < 3 {
                 return None;
