@@ -261,7 +261,10 @@ impl Tokenizer {
                             self.push_token(token);
                         }
                     } else {
-                        panic!("unable to read file \"{}\" in {}", string_token.value, self.location);
+                        panic!(
+                            "unable to read file \"{}\" in {}",
+                            string_token.value, self.location
+                        );
                     }
                 } else {
                     panic!("unexpected value in {} (did you typo?)", self.location);
@@ -298,7 +301,10 @@ impl Tokenizer {
                             class.body.write().unwrap().push(token);
                         }
                     } else {
-                        panic!("unable to read file \"{}\" in {}", string_token.value, self.location);
+                        panic!(
+                            "unable to read file \"{}\" in {}",
+                            string_token.value, self.location
+                        );
                     }
 
                     let token = Token::Let(LetToken {
