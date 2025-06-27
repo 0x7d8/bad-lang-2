@@ -20,7 +20,7 @@ pub fn run(
     match name {
         "rng#rand" => {
             if !args.is_empty() {
-                panic!("rng#rand requires 0 arguments in {}", location);
+                panic!("rng#rand requires 0 arguments in {location}");
             }
 
             let result = rand::random::<f64>();
@@ -32,7 +32,7 @@ pub fn run(
         }
         "rng#rand_range" => {
             if args.len() != 2 {
-                panic!("rng#rand_range requires 2 arguments in {}", location);
+                panic!("rng#rand_range requires 2 arguments in {location}");
             }
 
             let min = runtime.extract_value(&args[0])?;
@@ -48,7 +48,7 @@ pub fn run(
                     })))
                 }
                 _ => {
-                    panic!("rng#rand_range requires 2 numbers in {}", location);
+                    panic!("rng#rand_range requires 2 numbers in {location}");
                 }
             }
         }

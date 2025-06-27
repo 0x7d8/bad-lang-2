@@ -24,7 +24,7 @@ pub fn run(
     match name {
         "fs#readstr" => {
             if args.len() != 1 {
-                panic!("fs#readstr requires 1 argument in {}", location);
+                panic!("fs#readstr requires 1 argument in {location}");
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -38,7 +38,7 @@ pub fn run(
         }
         "fs#readbin" => {
             if args.len() != 1 {
-                panic!("fs#readbin requires 1 argument in {}", location);
+                panic!("fs#readbin requires 1 argument in {location}");
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -56,7 +56,7 @@ pub fn run(
         }
         "fs#write" => {
             if args.len() != 2 {
-                panic!("fs#write requires 2 arguments in {}", location);
+                panic!("fs#write requires 2 arguments in {location}");
             }
 
             let value = runtime.extract_value(&args[0])?;

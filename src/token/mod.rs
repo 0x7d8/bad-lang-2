@@ -536,7 +536,7 @@ impl Tokenizer {
         }
 
         for func in runtime::FUNCTIONS.iter() {
-            if segment.starts_with(&format!("{}(", func)) {
+            if segment.starts_with(&format!("{func}(")) {
                 let tokens = self.parse_args(&segment[func.len() + 1..segment.len() - 1]);
 
                 return Some(Token::FnCall(FnCallToken {
@@ -806,7 +806,7 @@ impl Tokenizer {
         }
 
         for func in runtime::FUNCTIONS.iter() {
-            if segment.starts_with(format!("{}(", func).as_str()) && segment.ends_with(")") {
+            if segment.starts_with(format!("{func}(").as_str()) && segment.ends_with(")") {
                 let tokens = self.parse_args(&segment[func.len() + 1..segment.len() - 1]);
 
                 return Some(ExpressionToken::FnCall(FnCallToken {
@@ -818,7 +818,7 @@ impl Tokenizer {
         }
 
         for (name, func) in &self.default_macros {
-            if segment.starts_with(format!("{}(", name).as_str()) && segment.ends_with(")") {
+            if segment.starts_with(format!("{name}(").as_str()) && segment.ends_with(")") {
                 let tokens = self.parse_args(&segment[name.len() + 1..segment.len() - 1]);
 
                 return func(tokens);

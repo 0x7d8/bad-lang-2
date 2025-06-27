@@ -17,7 +17,7 @@ fn main() {
             .to_string();
 
         std::fs::write(&file, token).unwrap();
-        println!("tokens written to {}", file);
+        println!("tokens written to {file}");
 
         return;
     }

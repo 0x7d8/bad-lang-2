@@ -284,7 +284,7 @@ impl BaseToken for BufferToken {
         let mut result = format!("Buffer({}) {{ ", self.value.read().unwrap().len());
 
         for byte in self.value.read().unwrap().iter().take(100) {
-            result.push_str(&format!("{:02x} ", byte));
+            result.push_str(&format!("{byte:02x} "));
         }
 
         if self.value.read().unwrap().len() > 100 {
@@ -305,7 +305,7 @@ impl BaseToken for BufferToken {
                 .unwrap()
                 .iter()
                 .fold(String::with_capacity(length * 3), |acc, byte| {
-                    acc + &format!("{:02x} ", byte)
+                    acc + &format!("{byte:02x} ")
                 })
     }
 

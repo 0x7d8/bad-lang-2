@@ -20,7 +20,7 @@ pub fn run(
     match name {
         "class#get" => {
             if args.len() != 2 {
-                panic!("array#get requires 2 arguments in {}", location);
+                panic!("array#get requires 2 arguments in {location}");
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -36,16 +36,14 @@ pub fn run(
                         }
                         _ => {
                             panic!(
-                                "class#get requires a string as the second argument in {}",
-                                location
+                                "class#get requires a string as the second argument in {location}"
                             );
                         }
                     }
                 }
                 _ => {
                     panic!(
-                        "class#get requires a class instance as the first argument in {}",
-                        location
+                        "class#get requires a class instance as the first argument in {location}"
                     );
                 }
             }

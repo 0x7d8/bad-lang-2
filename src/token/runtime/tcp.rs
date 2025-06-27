@@ -32,7 +32,7 @@ pub fn run(
     match name {
         "tcp#bind" => {
             if args.len() != 2 {
-                panic!("tcp#bind requires 2 arguments in {}", location);
+                panic!("tcp#bind requires 2 arguments in {location}");
             }
 
             let address = runtime.extract_value(&args[0])?;
@@ -52,13 +52,13 @@ pub fn run(
                     )))
                 }
                 _ => {
-                    panic!("tcp#bind requires a string and a number in {}", location);
+                    panic!("tcp#bind requires a string and a number in {location}");
                 }
             }
         }
         "tcp#getconn" => {
             if args.len() != 1 {
-                panic!("tcp#getconn requires 1 argument in {}", location);
+                panic!("tcp#getconn requires 1 argument in {location}");
             }
 
             let listener = runtime.extract_value(&args[0]);
@@ -78,14 +78,13 @@ pub fn run(
                     },
                 )))
             } else {
-                panic!("tcp#getconn requires a TcpListener in {}", location);
+                panic!("tcp#getconn requires a TcpListener in {location}");
             }
         }
         "tcp#readstr" => {
             if args.is_empty() || args.len() > 2 {
                 panic!(
-                    "tcp#readstr requires at least 1 argument and at most 2 arguments in {}",
-                    location
+                    "tcp#readstr requires at least 1 argument and at most 2 arguments in {location}"
                 );
             }
 
@@ -119,14 +118,13 @@ pub fn run(
                     value: result,
                 })))
             } else {
-                panic!("tcp#read requires a TcpStream in {}", location);
+                panic!("tcp#read requires a TcpStream in {location}");
             }
         }
         "tcp#readbin" => {
             if args.is_empty() || args.len() > 2 {
                 panic!(
-                    "tcp#readbin requires at least 1 argument and at most 2 arguments in {}",
-                    location
+                    "tcp#readbin requires at least 1 argument and at most 2 arguments in {location}"
                 );
             }
 
@@ -160,12 +158,12 @@ pub fn run(
                     value: Arc::new(RwLock::new(result)),
                 })))
             } else {
-                panic!("tcp#read requires a TcpStream in {}", location);
+                panic!("tcp#read requires a TcpStream in {location}");
             }
         }
         "tcp#write" => {
             if args.len() != 2 {
-                panic!("tcp#write requires 2 arguments in {}", location);
+                panic!("tcp#write requires 2 arguments in {location}");
             }
 
             let stream = runtime.extract_value(&args[0]);
@@ -180,10 +178,7 @@ pub fn run(
 
                 let data = match data {
                     Some(data) => data.value(0).to_string(),
-                    _ => panic!(
-                        "tcp#write requires a value as the second argument in {}",
-                        location
-                    ),
+                    _ => panic!("tcp#write requires a value as the second argument in {location}"),
                 };
 
                 stream.write_all(data.as_bytes()).unwrap();
@@ -192,7 +187,7 @@ pub fn run(
                     location: Default::default(),
                 })))
             } else {
-                panic!("tcp#write requires a TcpStream in {}", location);
+                panic!("tcp#write requires a TcpStream in {location}");
             }
         }
         _ => None,

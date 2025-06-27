@@ -20,7 +20,7 @@ pub fn run(
     match name {
         "io#println" => {
             if args.len() != 1 {
-                panic!("io#println requires 1 argument in {}", location);
+                panic!("io#println requires 1 argument in {location}");
             }
 
             let value = runtime.extract_value(&args[0])?;
@@ -32,7 +32,7 @@ pub fn run(
         }
         "io#inspect" => {
             if args.len() != 1 {
-                panic!("io#inspect requires 1 argument in {}", location);
+                panic!("io#inspect requires 1 argument in {location}");
             }
 
             let value = runtime.extract_value(&args[0])?;

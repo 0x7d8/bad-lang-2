@@ -21,13 +21,13 @@ pub fn run(
     match name {
         "time#sleep" => {
             if args.len() != 1 {
-                panic!("time#sleep requires 1 argument in {}", location);
+                panic!("time#sleep requires 1 argument in {location}");
             }
 
             let value = runtime.extract_value(&args[0])?;
             let seconds = match value {
                 ValueToken::Number(value) => value.value,
-                _ => panic!("time#sleep requires a number in {}", location),
+                _ => panic!("time#sleep requires a number in {location}"),
             };
 
             std::thread::sleep(std::time::Duration::from_millis((seconds * 1000.0) as u64));
@@ -37,7 +37,7 @@ pub fn run(
         }
         "time#now" => {
             if !args.is_empty() {
-                panic!("time#now requires no arguments in {}", location);
+                panic!("time#now requires no arguments in {location}");
             }
 
             let unix_time = std::time::SystemTime::now()

@@ -539,7 +539,7 @@ impl Runtime {
                     }
                 }
 
-                println!("variable {} not found", name);
+                println!("variable {name} not found");
 
                 None
             }

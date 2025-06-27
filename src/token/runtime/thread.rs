@@ -20,7 +20,7 @@ pub fn run(
     match name {
         "thread#launch" => {
             if args.is_empty() {
-                panic!("thread#launch requires at least 1 argument in {}", location);
+                panic!("thread#launch requires at least 1 argument in {location}");
             }
 
             let function = runtime.extract_value(&args[0])?;
@@ -91,13 +91,13 @@ pub fn run(
                     )))
                 }
                 _ => {
-                    panic!("thread#launch requires a function in {}", location);
+                    panic!("thread#launch requires a function in {location}");
                 }
             }
         }
         "thread#join" => {
             if args.len() != 1 {
-                panic!("thread#join requires 1 argument in {}", location);
+                panic!("thread#join requires 1 argument in {location}");
             }
 
             let thread = runtime.extract_value(&args[0]);
@@ -118,7 +118,7 @@ pub fn run(
                     location: Default::default(),
                 })))
             } else {
-                panic!("thread#kill requires a Thread in {}", location);
+                panic!("thread#kill requires a Thread in {location}");
             }
         }
         _ => None,
