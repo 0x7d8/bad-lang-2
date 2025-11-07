@@ -11,8 +11,17 @@ use super::string;
 
 use std::sync::{Arc, LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> =
-    LazyLock::new(|| vec!["math#eval", "#=", "math#floor", "math#ceil", "math#round"]);
+pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
+    vec![
+        "math#eval",
+        "#=",
+        "math#floor",
+        "math#ceil",
+        "math#round",
+        "math#sqrt",
+        "math#mod",
+    ]
+});
 
 pub fn run(
     name: &str,
@@ -94,6 +103,44 @@ pub fn run(
             Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
                 location: Default::default(),
                 value: value.round(),
+            })))
+        }
+        "math#sqrt" => {
+            if args.len() != 1 {
+                panic!("math#sqrt requires 1 argument in {location}");
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let value = match value {
+                ValueToken::Number(value) => value.value,
+                _ => panic!("math#sqrt requires a number in {location}"),
+            };
+
+            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
+                value: value.sqrt(),
+            })))
+        }
+        "math#mod" => {
+            if args.len() != 2 {
+                panic!("math#mod requires 2 arguments in {location}");
+            }
+
+            let value = runtime.extract_value(&args[0])?;
+            let value = match value {
+                ValueToken::Number(value) => value.value,
+                _ => panic!("math#mod requires 2 numbers in {location}"),
+            };
+
+            let value_divisor = runtime.extract_value(&args[1])?;
+            let value_divisor = match value_divisor {
+                ValueToken::Number(value) => value.value,
+                _ => panic!("math#mod requires 2 numbers in {location}"),
+            };
+
+            Some(ExpressionToken::Value(ValueToken::Number(NumberToken {
+                location: Default::default(),
+                value: value.rem_euclid(value_divisor),
             })))
         }
         _ => None,

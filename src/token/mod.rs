@@ -10,8 +10,9 @@ use base::{
 };
 use comparison::{COMPARISON_OPERATORS, ComparisonToken};
 use logic::{
-    BreakToken, ClassFnCallToken, ClassInstantiationToken, ExpressionToken, FnCallToken, IfToken,
-    LetAssignNumToken, LetAssignToken, LetToken, LoopToken, ReturnToken, StaticClassFnCallToken,
+    BreakToken, ClassFnCallToken, ClassInstantiationToken, ExpressionToken, FnCallToken,
+    ForeachToken, IfToken, LetAssignNumToken, LetAssignToken, LetToken, LoopToken, ReturnToken,
+    StaticClassFnCallToken, WhileToken,
 };
 use std::{
     collections::HashMap,
@@ -50,6 +51,8 @@ pub enum Token {
     StaticClassFnCall(StaticClassFnCallToken),
     ClassFnCall(ClassFnCallToken),
     Loop(LoopToken),
+    While(WhileToken),
+    Foreach(ForeachToken),
     Break(BreakToken),
     Return(ReturnToken),
     If(IfToken),
@@ -58,6 +61,8 @@ pub enum Token {
 pub enum InsideToken {
     Function(FunctionToken),
     Loop(LoopToken),
+    While(WhileToken),
+    Foreach(ForeachToken),
     If(IfToken),
     Class(ClassToken),
 }
@@ -114,6 +119,12 @@ impl Tokenizer {
                 InsideToken::Loop(loop_token) => {
                     loop_token.body.write().unwrap().push(token);
                 }
+                InsideToken::While(while_token) => {
+                    while_token.body.write().unwrap().push(token);
+                }
+                InsideToken::Foreach(foreach_token) => {
+                    foreach_token.body.write().unwrap().push(token);
+                }
                 InsideToken::If(if_token) => {
                     if_token.body.write().unwrap().push(token);
                 }
@@ -144,6 +155,18 @@ impl Tokenizer {
                 }
                 InsideToken::Loop(loop_token) => {
                     for token in loop_token.body.read().unwrap().iter() {
+                        tokens.push(token.clone());
+                        Self::add_nested_tokens(Self::check_if_is_inside(token), &mut tokens);
+                    }
+                }
+                InsideToken::While(while_token) => {
+                    for token in while_token.body.read().unwrap().iter() {
+                        tokens.push(token.clone());
+                        Self::add_nested_tokens(Self::check_if_is_inside(token), &mut tokens);
+                    }
+                }
+                InsideToken::Foreach(foreach_token) => {
+                    for token in foreach_token.body.read().unwrap().iter() {
                         tokens.push(token.clone());
                         Self::add_nested_tokens(Self::check_if_is_inside(token), &mut tokens);
                     }
@@ -181,12 +204,11 @@ impl Tokenizer {
                     {
                         return Some(InsideToken::Function(fn_token.clone()));
                     }
-                } else if let_token.is_class {
-                    if let ExpressionToken::Value(ValueToken::Class(class_token)) =
+                } else if let_token.is_class
+                    && let ExpressionToken::Value(ValueToken::Class(class_token)) =
                         &*let_token.value.read().unwrap()
-                    {
-                        return Some(InsideToken::Class(class_token.clone()));
-                    }
+                {
+                    return Some(InsideToken::Class(class_token.clone()));
                 }
             }
             _ => {}
@@ -209,6 +231,18 @@ impl Tokenizer {
             }
             InsideToken::Loop(loop_token) => {
                 for token in loop_token.body.read().unwrap().iter() {
+                    tokens.push(token.clone());
+                    Self::add_nested_tokens(Self::check_if_is_inside(token), tokens);
+                }
+            }
+            InsideToken::While(while_token) => {
+                for token in while_token.body.read().unwrap().iter() {
+                    tokens.push(token.clone());
+                    Self::add_nested_tokens(Self::check_if_is_inside(token), tokens);
+                }
+            }
+            InsideToken::Foreach(foreach_token) => {
+                for token in foreach_token.body.read().unwrap().iter() {
                     tokens.push(token.clone());
                     Self::add_nested_tokens(Self::check_if_is_inside(token), tokens);
                 }
@@ -483,6 +517,60 @@ impl Tokenizer {
                 .push(Arc::new(Mutex::new(InsideToken::Loop(LoopToken { body }))));
 
             return None;
+        } else if segment.starts_with("while") {
+            let condition = self.parse_expression(segment[7..segment.len() - 3].trim());
+
+            let condition = Arc::new(condition.unwrap_or_else(|| {
+                panic!("unexpected condition in {} (did you typo?)", self.location)
+            }));
+
+            let body = Arc::new(RwLock::new(Vec::new()));
+            let token = Token::While(WhileToken {
+                condition: Arc::clone(&condition),
+                body: Arc::clone(&body),
+            });
+
+            self.push_token(token);
+            self.inside
+                .push(Arc::new(Mutex::new(InsideToken::While(WhileToken {
+                    condition,
+                    body,
+                }))));
+
+            return None;
+        } else if segment.starts_with("foreach") {
+            let (item, expression) = segment[9..segment.len() - 3]
+                .trim()
+                .split_once(" of ")
+                .unwrap_or_else(|| {
+                    panic!(
+                        "unexpected expression in {}, must be `item of expression` (did you typo?)",
+                        self.location
+                    )
+                });
+
+            let expression = self.parse_expression(expression);
+
+            let expression = Arc::new(expression.unwrap_or_else(|| {
+                panic!("unexpected expression in {} (did you typo?)", self.location)
+            }));
+
+            let body = Arc::new(RwLock::new(Vec::new()));
+            let token = Token::Foreach(ForeachToken {
+                item: item.to_string(),
+                expression: Arc::clone(&expression),
+                body: Arc::clone(&body),
+            });
+
+            self.push_token(token);
+            self.inside
+                .push(Arc::new(Mutex::new(InsideToken::Foreach(ForeachToken {
+                    item: item.to_string(),
+                    expression,
+                    body,
+                }))));
+
+            return None;
         } else if segment.starts_with("return") && !self.inside.is_empty() {
             if segment.len() < 7 {
                 return Some(Token::Return(ReturnToken {
@@ -740,17 +828,17 @@ impl Tokenizer {
             let class = parts[0][4..].trim();
 
             for token in self.current_tokens_context().iter().rev() {
-                if let Token::Let(let_token) = token {
-                    if segment.starts_with(&format!("new {}", let_token.name)) {
-                        let args = self.parse_args(parts[1][0..parts[1].len() - 1].trim());
+                if let Token::Let(let_token) = token
+                    && segment.starts_with(&format!("new {}", let_token.name))
+                {
+                    let args = self.parse_args(parts[1][0..parts[1].len() - 1].trim());
 
-                        return Some(ExpressionToken::ClassInstantiation(
-                            ClassInstantiationToken {
-                                class: class.to_string(),
-                                args: args.into_iter().map(Arc::new).collect(),
-                            },
-                        ));
-                    }
+                    return Some(ExpressionToken::ClassInstantiation(
+                        ClassInstantiationToken {
+                            class: class.to_string(),
+                            args: args.into_iter().map(Arc::new).collect(),
+                        },
+                    ));
                 }
             }
         }
@@ -766,18 +854,19 @@ impl Tokenizer {
         // check for ranges (x..x)
         {
             let parts = segment.splitn(2, "..").collect::<Vec<&str>>();
-            if let (Some(left), Some(right)) = (parts.first(), parts.get(1)) {
-                if !left.is_empty() && !right.is_empty() {
-                    let left = self.parse_expression(left);
-                    let right = self.parse_expression(right);
+            if let (Some(left), Some(right)) = (parts.first(), parts.get(1))
+                && !left.is_empty()
+                && !right.is_empty()
+            {
+                let left = self.parse_expression(left);
+                let right = self.parse_expression(right);
 
-                    if let (Some(start), Some(end)) = (left, right) {
-                        return Some(ExpressionToken::Value(ValueToken::Range(RangeToken {
-                            location: self.location(),
-                            start: Arc::new(RwLock::new(start)),
-                            end: Arc::new(RwLock::new(end)),
-                        })));
-                    }
+                if let (Some(start), Some(end)) = (left, right) {
+                    return Some(ExpressionToken::Value(ValueToken::Range(RangeToken {
+                        location: self.location(),
+                        start: Arc::new(RwLock::new(start)),
+                        end: Arc::new(RwLock::new(end)),
+                    })));
                 }
             }
         }
@@ -843,16 +932,16 @@ impl Tokenizer {
                     }
                 }
                 3 => {
-                    if parts[1] == "#" {
-                        if let Some(token) = self.parse_expression(parts[2]) {
-                            return Some(ExpressionToken::Let(LetToken {
-                                name: parts[2].to_string(),
-                                is_const: false,
-                                is_function: false,
-                                is_class: false,
-                                value: Arc::new(RwLock::new(token)),
-                            }));
-                        }
+                    if parts[1] == "#"
+                        && let Some(token) = self.parse_expression(parts[2])
+                    {
+                        return Some(ExpressionToken::Let(LetToken {
+                            name: parts[2].to_string(),
+                            is_const: false,
+                            is_function: false,
+                            is_class: false,
+                            value: Arc::new(RwLock::new(token)),
+                        }));
                     }
                 }
                 _ => {}
@@ -911,20 +1000,19 @@ impl Tokenizer {
 
                         if let ExpressionToken::Value(ValueToken::Class(class_token)) =
                             &*let_token.value.read().unwrap()
+                            && class_token.name == parts[0]
                         {
-                            if class_token.name == parts[0] {
-                                for token in class_token.body.read().unwrap().iter() {
-                                    if let Token::Let(let_token) = token {
-                                        if let_token.name == property {
-                                            return Some(ExpressionToken::Let(LetToken {
-                                                name: property.to_string(),
-                                                is_const: let_token.is_const,
-                                                is_function: let_token.is_function,
-                                                is_class: let_token.is_class,
-                                                value: Arc::clone(&let_token.value),
-                                            }));
-                                        }
-                                    }
+                            for token in class_token.body.read().unwrap().iter() {
+                                if let Token::Let(let_token) = token
+                                    && let_token.name == property
+                                {
+                                    return Some(ExpressionToken::Let(LetToken {
+                                        name: property.to_string(),
+                                        is_const: let_token.is_const,
+                                        is_function: let_token.is_function,
+                                        is_class: let_token.is_class,
+                                        value: Arc::clone(&let_token.value),
+                                    }));
                                 }
                             }
                         }
@@ -1049,10 +1137,10 @@ impl Tokenizer {
             }
         }
 
-        if !expr.is_empty() {
-            if let Some(token) = self.parse_expression(expr.trim()) {
-                tokens.push(token);
-            }
+        if !expr.is_empty()
+            && let Some(token) = self.parse_expression(expr.trim())
+        {
+            tokens.push(token);
         }
 
         tokens

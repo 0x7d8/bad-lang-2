@@ -79,6 +79,19 @@ pub struct LoopToken {
 }
 
 #[derive(Debug, Clone)]
+pub struct WhileToken {
+    pub condition: Arc<ExpressionToken>,
+    pub body: Arc<RwLock<Vec<Token>>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ForeachToken {
+    pub item: String,
+    pub expression: Arc<ExpressionToken>,
+    pub body: Arc<RwLock<Vec<Token>>>,
+}
+
+#[derive(Debug, Clone)]
 pub struct IfToken {
     pub reversed: bool,
     pub condition: Arc<ExpressionToken>,

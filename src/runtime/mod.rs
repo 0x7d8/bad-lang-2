@@ -1,6 +1,9 @@
 use crate::token::{
     InsideToken, Token,
-    base::{BaseToken, BooleanToken, ClassInstanceToken, NullToken, NumberToken, ValueToken},
+    base::{
+        BaseToken, BooleanToken, ClassInstanceToken, NullToken, NumberToken, StringToken,
+        ValueToken,
+    },
     comparison::ComparisonOperator,
     logic::{ExpressionToken, LetToken, NumOperation, ReturnToken},
     runtime,
@@ -51,10 +54,10 @@ impl Runtime {
     }
 
     fn lookup_variable(&self, name: &str) -> Option<Arc<RwLock<ExpressionToken>>> {
-        if !self.modified_vars.borrow().contains(name) {
-            if let Some(value) = self.lookup_cache.borrow().get(name) {
-                return Some(Arc::clone(value));
-            }
+        if !self.modified_vars.borrow().contains(name)
+            && let Some(value) = self.lookup_cache.borrow().get(name)
+        {
+            return Some(Arc::clone(value));
         }
 
         for scope in self.scopes.iter().rev() {
@@ -143,6 +146,177 @@ impl Runtime {
                     self.scopes.last_mut().unwrap().clear();
                     self.modified_vars.borrow_mut().clear();
                     self.lookup_cache.borrow_mut().clear();
+                }
+
+                self.scopes.pop();
+                self.call_stack.pop();
+
+                self.rebuild_lookup_cache();
+            }
+            Token::While(while_token) => {
+                self.call_stack
+                    .push(InsideToken::While(while_token.clone()));
+                self.scope_create();
+
+                let body = while_token.body.read().unwrap();
+
+                while self.extract_value(&while_token.condition).unwrap().truthy() {
+                    let mut break_loop = false;
+
+                    for token in body.iter() {
+                        if self.execute(token).is_none() {
+                            break_loop = true;
+                            break;
+                        }
+                    }
+
+                    if break_loop {
+                        break;
+                    }
+
+                    self.scopes.last_mut().unwrap().clear();
+                    self.modified_vars.borrow_mut().clear();
+                    self.lookup_cache.borrow_mut().clear();
+                }
+
+                self.scopes.pop();
+                self.call_stack.pop();
+
+                self.rebuild_lookup_cache();
+            }
+            Token::Foreach(foreach_token) => {
+                self.call_stack
+                    .push(InsideToken::Foreach(foreach_token.clone()));
+                self.scope_create();
+
+                let body = foreach_token.body.read().unwrap();
+                let value = self.extract_value(&foreach_token.expression);
+
+                match value {
+                    Some(ValueToken::String(string_value)) => {
+                        for c in string_value.value.chars() {
+                            let mut break_loop = false;
+
+                            self.scope_set(
+                                &foreach_token.item,
+                                Arc::new(RwLock::new(ExpressionToken::Value(ValueToken::String(
+                                    StringToken {
+                                        value: c.to_string(),
+                                        location: Default::default(),
+                                    },
+                                )))),
+                            );
+
+                            for token in body.iter() {
+                                if self.execute(token).is_none() {
+                                    break_loop = true;
+                                    break;
+                                }
+                            }
+
+                            if break_loop {
+                                break;
+                            }
+
+                            self.scopes.last_mut().unwrap().clear();
+                            self.modified_vars.borrow_mut().clear();
+                            self.lookup_cache.borrow_mut().clear();
+                        }
+                    }
+                    Some(ValueToken::Array(array_value)) => {
+                        for e in array_value.value.read().unwrap().iter() {
+                            let mut break_loop = false;
+
+                            self.scope_set(&foreach_token.item, Arc::new(RwLock::new(e.clone())));
+
+                            for token in body.iter() {
+                                if self.execute(token).is_none() {
+                                    break_loop = true;
+                                    break;
+                                }
+                            }
+
+                            if break_loop {
+                                break;
+                            }
+
+                            self.scopes.last_mut().unwrap().clear();
+                            self.modified_vars.borrow_mut().clear();
+                            self.lookup_cache.borrow_mut().clear();
+                        }
+                    }
+                    Some(ValueToken::Buffer(buffer_value)) => {
+                        for b in buffer_value.value.read().unwrap().iter() {
+                            let mut break_loop = false;
+
+                            self.scope_set(
+                                &foreach_token.item,
+                                Arc::new(RwLock::new(ExpressionToken::Value(ValueToken::Number(
+                                    NumberToken {
+                                        value: *b as f64,
+                                        location: Default::default(),
+                                    },
+                                )))),
+                            );
+
+                            for token in body.iter() {
+                                if self.execute(token).is_none() {
+                                    break_loop = true;
+                                    break;
+                                }
+                            }
+
+                            if break_loop {
+                                break;
+                            }
+
+                            self.scopes.last_mut().unwrap().clear();
+                            self.modified_vars.borrow_mut().clear();
+                            self.lookup_cache.borrow_mut().clear();
+                        }
+                    }
+                    Some(ValueToken::Range(range_value)) => {
+                        let start = self.extract_value(&range_value.start.read().unwrap())?;
+                        let end = self.extract_value(&range_value.end.read().unwrap())?;
+
+                        let (ValueToken::Number(start), ValueToken::Number(end)) = (start, end)
+                        else {
+                            panic!(
+                                "foreach range expression requires a range with a set start & end in {}",
+                                range_value.location
+                            );
+                        };
+
+                        for i in start.value as isize..end.value as isize {
+                            let mut break_loop = false;
+
+                            self.scope_set(
+                                &foreach_token.item,
+                                Arc::new(RwLock::new(ExpressionToken::Value(ValueToken::Number(
+                                    NumberToken {
+                                        value: i as f64,
+                                        location: Default::default(),
+                                    },
+                                )))),
+                            );
+
+                            for token in body.iter() {
+                                if self.execute(token).is_none() {
+                                    break_loop = true;
+                                    break;
+                                }
+                            }
+
+                            if break_loop {
+                                break;
+                            }
+
+                            self.scopes.last_mut().unwrap().clear();
+                            self.modified_vars.borrow_mut().clear();
+                            self.lookup_cache.borrow_mut().clear();
+                        }
+                    }
+                    _ => panic!("foreach expression must be a string, array, buffer or range"),
                 }
 
                 self.scopes.pop();
@@ -264,134 +438,122 @@ impl Runtime {
             Token::StaticClassFnCall(call_token) => {
                 let class = self.lookup_variable(&call_token.class);
 
-                if let Some(class) = class {
-                    if let ValueToken::Class(class_token) =
+                if let Some(class) = class
+                    && let ValueToken::Class(class_token) =
                         self.extract_value(&class.read().unwrap()).unwrap()
+                {
+                    self.scope_create();
+                    for token in class_token.body.read().unwrap().iter() {
+                        self.execute(token);
+                    }
+
+                    let fn_var = self.lookup_variable(&call_token.name);
+
+                    if let Some(fn_var) = fn_var
+                        && let ValueToken::Function(fn_token) =
+                            self.extract_value(&fn_var.read().unwrap()).unwrap()
                     {
+                        self.call_stack
+                            .push(InsideToken::Function(fn_token.clone()));
                         self.scope_create();
-                        for token in class_token.body.read().unwrap().iter() {
-                            self.execute(token);
-                        }
 
-                        let fn_var = self.lookup_variable(&call_token.name);
+                        for (index, arg) in fn_token.args.iter().enumerate() {
+                            if let Some(arg_expr) = call_token.args.get(index) {
+                                let extracted = self.extract_value(arg_expr).unwrap();
 
-                        if let Some(fn_var) = fn_var {
-                            if let ValueToken::Function(fn_token) =
-                                self.extract_value(&fn_var.read().unwrap()).unwrap()
-                            {
-                                self.call_stack
-                                    .push(InsideToken::Function(fn_token.clone()));
-                                self.scope_create();
-
-                                for (index, arg) in fn_token.args.iter().enumerate() {
-                                    if let Some(arg_expr) = call_token.args.get(index) {
-                                        let extracted = self.extract_value(arg_expr).unwrap();
-
-                                        self.scope_set(
-                                            arg,
-                                            Arc::new(RwLock::new(ExpressionToken::Value(
-                                                extracted,
-                                            ))),
-                                        );
-                                    }
-                                }
-
-                                let body = fn_token.body.read().unwrap();
-
-                                for token in body.iter() {
-                                    let value = self.execute(token);
-
-                                    if value.is_none() {
-                                        break;
-                                    } else if let Some(ExpressionToken::Return(return_token)) =
-                                        value
-                                    {
-                                        self.scopes.pop();
-                                        self.call_stack.pop();
-
-                                        self.rebuild_lookup_cache();
-                                        return Some(ExpressionToken::Return(return_token));
-                                    }
-                                }
-
-                                self.scopes.pop();
-                                self.call_stack.pop();
-                                self.rebuild_lookup_cache();
+                                self.scope_set(
+                                    arg,
+                                    Arc::new(RwLock::new(ExpressionToken::Value(extracted))),
+                                );
                             }
                         }
+
+                        let body = fn_token.body.read().unwrap();
+
+                        for token in body.iter() {
+                            let value = self.execute(token);
+
+                            if value.is_none() {
+                                break;
+                            } else if let Some(ExpressionToken::Return(return_token)) = value {
+                                self.scopes.pop();
+                                self.call_stack.pop();
+
+                                self.rebuild_lookup_cache();
+                                return Some(ExpressionToken::Return(return_token));
+                            }
+                        }
+
+                        self.scopes.pop();
+                        self.call_stack.pop();
+                        self.rebuild_lookup_cache();
                     }
                 }
             }
             Token::ClassFnCall(call_token) => {
                 let instance = self.lookup_variable(&call_token.instance);
 
-                if let Some(instance) = instance {
-                    if let ValueToken::ClassInstance(class_instance) =
+                if let Some(instance) = instance
+                    && let ValueToken::ClassInstance(class_instance) =
                         self.extract_value(&instance.read().unwrap()).unwrap()
+                {
+                    self.scope_create();
+                    self.scopes
+                        .last_mut()
+                        .unwrap()
+                        .extend(class_instance.scope.read().unwrap().clone());
+
+                    let fn_var = self.lookup_variable(&call_token.name);
+
+                    if let Some(fn_var) = fn_var
+                        && let ValueToken::Function(fn_token) =
+                            self.extract_value(&fn_var.read().unwrap()).unwrap()
                     {
+                        self.call_stack
+                            .push(InsideToken::Function(fn_token.clone()));
                         self.scope_create();
-                        self.scopes
-                            .last_mut()
-                            .unwrap()
-                            .extend(class_instance.scope.read().unwrap().clone());
 
-                        let fn_var = self.lookup_variable(&call_token.name);
+                        for (index, arg) in fn_token.args.iter().enumerate() {
+                            if index == 0 {
+                                continue;
+                            }
 
-                        if let Some(fn_var) = fn_var {
-                            if let ValueToken::Function(fn_token) =
-                                self.extract_value(&fn_var.read().unwrap()).unwrap()
-                            {
-                                self.call_stack
-                                    .push(InsideToken::Function(fn_token.clone()));
-                                self.scope_create();
-
-                                for (index, arg) in fn_token.args.iter().enumerate() {
-                                    if index == 0 {
-                                        continue;
-                                    }
-
-                                    if let Some(arg_expr) = call_token.args.get(index - 1) {
-                                        let extracted = self.extract_value(arg_expr).unwrap();
-
-                                        self.scope_set(
-                                            arg,
-                                            Arc::new(RwLock::new(ExpressionToken::Value(
-                                                extracted,
-                                            ))),
-                                        );
-                                    }
-                                }
+                            if let Some(arg_expr) = call_token.args.get(index - 1) {
+                                let extracted = self.extract_value(arg_expr).unwrap();
 
                                 self.scope_set(
-                                    "self",
-                                    Arc::new(RwLock::new(ExpressionToken::Value(
-                                        ValueToken::ClassInstance(class_instance.clone()),
-                                    ))),
+                                    arg,
+                                    Arc::new(RwLock::new(ExpressionToken::Value(extracted))),
                                 );
-
-                                let body = fn_token.body.read().unwrap();
-
-                                for token in body.iter() {
-                                    let value = self.execute(token);
-
-                                    if value.is_none() {
-                                        break;
-                                    } else if let Some(ExpressionToken::Return(return_token)) =
-                                        value
-                                    {
-                                        self.scopes.pop();
-                                        self.call_stack.pop();
-
-                                        self.rebuild_lookup_cache();
-                                        return Some(ExpressionToken::Return(return_token));
-                                    }
-                                }
-
-                                self.scopes.pop();
-                                self.call_stack.pop();
-                                self.rebuild_lookup_cache();
                             }
                         }
+
+                        self.scope_set(
+                            "self",
+                            Arc::new(RwLock::new(ExpressionToken::Value(
+                                ValueToken::ClassInstance(class_instance.clone()),
+                            ))),
+                        );
+
+                        let body = fn_token.body.read().unwrap();
+
+                        for token in body.iter() {
+                            let value = self.execute(token);
+
+                            if value.is_none() {
+                                break;
+                            } else if let Some(ExpressionToken::Return(return_token)) = value {
+                                self.scopes.pop();
+                                self.call_stack.pop();
+
+                                self.rebuild_lookup_cache();
+                                return Some(ExpressionToken::Return(return_token));
+                            }
+                        }
+
+                        self.scopes.pop();
+                        self.call_stack.pop();
+                        self.rebuild_lookup_cache();
                     }
                 }
             }
@@ -533,10 +695,10 @@ impl Runtime {
             }
             ExpressionToken::Value(value) => Some(value.clone()),
             ExpressionToken::Let(LetToken { name, .. }) => {
-                if let Some(var) = self.lookup_variable(name) {
-                    if let Ok(guard) = var.read() {
-                        return self.extract_value(&guard);
-                    }
+                if let Some(var) = self.lookup_variable(name)
+                    && let Ok(guard) = var.read()
+                {
+                    return self.extract_value(&guard);
                 }
 
                 println!("variable {name} not found");
@@ -547,12 +709,11 @@ impl Runtime {
                 let mut context = meval::Context::empty();
 
                 for (name, value) in self.scope_aggregate(false) {
-                    if let Ok(guard) = value.read() {
-                        if let ValueToken::Number(number_token) =
+                    if let Ok(guard) = value.read()
+                        && let ValueToken::Number(number_token) =
                             self.extract_value(&guard).unwrap()
-                        {
-                            context.var(name, number_token.value);
-                        }
+                    {
+                        context.var(name, number_token.value);
                     }
                 }
 

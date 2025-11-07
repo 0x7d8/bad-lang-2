@@ -9,8 +9,7 @@ use crate::{
 
 use std::sync::{Arc, LazyLock};
 
-pub static FUNCTIONS: LazyLock<Vec<&str>> =
-    LazyLock::new(|| vec!["time#sleep", "time#now", "time#now_ms"]);
+pub static FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| vec!["time#sleep", "time#now"]);
 
 pub fn run(
     name: &str,
